@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import prismaClient from '../prismaClient';
 import { Role, User } from '@prisma/client';
-import bcrypt, { hash } from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 export async function register(
@@ -34,13 +34,7 @@ export async function register(
     },
   });
 
-  const token = getJwtTokenForUser(user);
-
-  response.status(200).json({
-    success: true,
-    message: 'User was successfully created',
-    token: token,
-  });
+  sendLoginResponseWithToken(response, user);
 }
 
 export async function login(
@@ -48,8 +42,6 @@ export async function login(
   response: Response
 ): Promise<void> {
   const { email, password } = request.body;
-  const hashedPassword = await encryptPassword(password);
-  console.log(hashedPassword);
 
   const user = await prismaClient.user.findFirst({
     where: { email: email },
@@ -72,13 +64,23 @@ export async function login(
     return;
   }
 
-  const token = getJwtTokenForUser(user);
+  sendLoginResponseWithToken(response, user);
+}
 
-  response.status(200).json({
-    success: true,
-    message: 'Successfully logged in',
-    token: token,
-  });
+export async function logout(
+  request: Request,
+  response: Response
+): Promise<void> {
+  response
+    .status(200)
+    .cookie('token', 'none', {
+      expires: new Date(Date.now()),
+      httpOnly: true,
+    })
+    .json({
+      success: true,
+      message: 'Successfully logged out',
+    });
 }
 
 async function comparePasswords(
@@ -97,5 +99,21 @@ async function encryptPassword(password: string): Promise<string> {
 function getJwtTokenForUser(user: User): string {
   return jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_TIME_TO_LIVE,
+  });
+}
+
+function sendLoginResponseWithToken(response: Response, user: User) {
+  const token = getJwtTokenForUser(user);
+  const options = {
+    expires: new Date(
+      Date.now() + Number(process.env.COOKIE_TIME_TO_LIVE) * 24 * 60 * 60 * 1000
+    ),
+    httpOnly: true,
+    secure: true,
+  };
+
+  response.status(200).cookie('token', token, options).json({
+    success: true,
+    token: token,
   });
 }
