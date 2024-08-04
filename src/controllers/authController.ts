@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import prismaClient from '../prismaClient';
 import { Role, User } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import bcrypt, { hash } from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 export async function register(
@@ -43,19 +43,55 @@ export async function register(
   });
 }
 
-async function encryptPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10);
-  const hash = await bcrypt.hash(password, salt);
-  return hash;
-}
-
 export async function login(
   request: Request,
   response: Response
 ): Promise<void> {
   const { email, password } = request.body;
+  const hashedPassword = await encryptPassword(password);
+  console.log(hashedPassword);
 
-  const user = prismaClient.user.findFirst({ where: { email } });
+  const user = await prismaClient.user.findFirst({
+    where: { email: email },
+  });
+
+  if (!user) {
+    response.status(401).json({
+      success: false,
+      message: 'Incorrect email or password',
+    });
+    return;
+  }
+
+  const passwordMatch = await comparePasswords(user.password, password);
+  if (!passwordMatch) {
+    response.status(401).json({
+      success: false,
+      message: 'Incorrect email or password',
+    });
+    return;
+  }
+
+  const token = getJwtTokenForUser(user);
+
+  response.status(200).json({
+    success: true,
+    message: 'Successfully logged in',
+    token: token,
+  });
+}
+
+async function comparePasswords(
+  userPassword: string,
+  loginPassword: string
+): Promise<boolean> {
+  return await bcrypt.compare(loginPassword, userPassword);
+}
+
+async function encryptPassword(password: string): Promise<string> {
+  const salt = await bcrypt.genSalt(10);
+  const hash = await bcrypt.hash(password, salt);
+  return hash;
 }
 
 function getJwtTokenForUser(user: User): string {
