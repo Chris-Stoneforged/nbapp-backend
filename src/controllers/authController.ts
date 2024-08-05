@@ -1,12 +1,14 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import prismaClient from '../prismaClient';
 import { Role, User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import ServerError from '../serverError';
 
 export async function register(
   request: Request,
-  response: Response
+  response: Response,
+  next: NextFunction
 ): Promise<void> {
   const { email, nickname, password } = request.body;
 
@@ -16,10 +18,7 @@ export async function register(
   });
 
   if (existingUser) {
-    response
-      .status(400)
-      .json({ success: false, message: 'Email is already in use!' });
-    return;
+    return next(new ServerError(400, 'Email is already in use'));
   }
 
   const hashedPassword = await encryptPassword(password);
@@ -39,7 +38,8 @@ export async function register(
 
 export async function login(
   request: Request,
-  response: Response
+  response: Response,
+  next: NextFunction
 ): Promise<void> {
   const { email, password } = request.body;
 
@@ -48,27 +48,19 @@ export async function login(
   });
 
   if (!user) {
-    response.status(401).json({
-      success: false,
-      message: 'Incorrect email or password',
-    });
-    return;
+    return next(new ServerError(401, 'Incorrect email or password'));
   }
 
   const passwordMatch = await comparePasswords(user.password, password);
   if (!passwordMatch) {
-    response.status(401).json({
-      success: false,
-      message: 'Incorrect email or password',
-    });
-    return;
+    return next(new ServerError(401, 'Incorrect email or password'));
   }
 
   sendLoginResponseWithToken(response, user);
 }
 
 export async function logout(
-  request: Request,
+  _request: Request,
   response: Response
 ): Promise<void> {
   response

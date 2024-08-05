@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import prismaClient from '../prismaClient';
+import ServerError from '../serverError';
 
 export async function isUserAuthenticated(
   request: Request,
-  response: Response,
+  _response: Response,
   next: NextFunction
 ) {
   let token: string;
@@ -16,31 +17,19 @@ export async function isUserAuthenticated(
   }
 
   if (!token) {
-    response.status(401).json({
-      success: false,
-      message: 'User is not authorized',
-    });
-    return;
+    return next(new ServerError(401, 'User is not authorized'));
   }
 
   let payload: JwtPayload;
   try {
     payload = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
   } catch (e) {
-    response.status(401).json({
-      success: false,
-      message: `Error verifying token - ${e.message}`,
-    });
-    return;
+    return next(new ServerError(401, `Error verifying token - ${e.message}`));
   }
 
   const user = await prismaClient.user.findFirst({ where: { id: payload.id } });
   if (!user) {
-    response.status(401).json({
-      success: false,
-      message: 'Invalid token',
-    });
-    return;
+    return next(new ServerError(401, 'Invalid token'));
   }
 
   request.user = user;
