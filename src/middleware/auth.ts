@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import prismaClient from '../prismaClient';
 import ServerError from '../serverError';
+import { Role } from '@prisma/client';
 
 export async function isUserAuthenticated(
   request: Request,
@@ -33,5 +34,17 @@ export async function isUserAuthenticated(
   }
 
   request.user = user;
+  next();
+}
+
+export async function isAdmin(
+  request: Request,
+  _response: Response,
+  next: NextFunction
+) {
+  if (request.user.role !== Role.Admin) {
+    return next(new ServerError(403, 'Access denied'));
+  }
+
   next();
 }
