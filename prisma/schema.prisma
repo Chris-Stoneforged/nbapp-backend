@@ -24,4 +24,23 @@ model User {
   nickname        String
   password        String        
   role            Role
+  tournament_id   Int?
+  tournament      Tournament?    @relation(fields: [tournament_id], references: [id])
+  sent_tokens     InviteToken[]
+}
+
+model Tournament {
+  id              Int           @id @default(autoincrement())
+  users           User[]
+  invite_tokens   InviteToken[]
+}
+
+model InviteToken {
+  id              Int           @id @default(autoincrement())
+  tournament_id   Int
+  tournament      Tournament    @relation(fields: [tournament_id], references: [id], onDelete: Cascade)
+  code            String        @unique
+  expiry          DateTime
+  sender_id       Int           
+  sender          User          @relation(fields: [sender_id], references: [id])
 }
