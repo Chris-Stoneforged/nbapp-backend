@@ -58,6 +58,14 @@
     "docker-build": {
       "dependsOn": ["build"],
       "command": "docker build -f Dockerfile . -t nbapp-backend"
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{projectRoot}/coverage"],
+      "defaultConfiguration": "test",
+      "options": {
+        "jestConfig": "jest.config.ts"
+      }
     }
   }
 }

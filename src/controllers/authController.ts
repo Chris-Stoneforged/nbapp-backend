@@ -11,6 +11,9 @@ export async function register(
   next: NextFunction
 ): Promise<void> {
   const { email, nickname, password } = request.body;
+  if (!email || !nickname || !password) {
+    return next(new ServerError(400, 'Missing required information'));
+  }
 
   // Make sure email is unique
   const existingUser = await prismaClient.user.findFirst({

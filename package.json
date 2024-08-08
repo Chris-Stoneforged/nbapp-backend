@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "start": "nx serve",
+    "start": "dotenv -e .env.development -- nx serve",
     "build": "nx build",
-    "test": "nx test"
+    "test": "docker compose up -d && sleep 1 && dotenv -e .env.test -- npx prisma migrate deploy && nx test && docker compose down"
   },
   "private": true,
   "dependencies": {
@@ -13,6 +13,8 @@
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
+    "docker-compose": "^0.24.8",
+    "dotenv-cli": "^7.4.2",
     "express": "~4.18.1",
     "jsonwebtoken": "^9.0.2",
     "tslib": "^2.3.0"
@@ -34,6 +36,7 @@
     "@types/jest": "^29.4.0",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "~18.16.9",
+    "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
     "@typescript-eslint/parser": "^7.16.0",
     "esbuild": "^0.19.2",
@@ -41,9 +44,11 @@
     "eslint-config-prettier": "^9.0.0",
     "jest": "^29.4.1",
     "jest-environment-node": "^29.4.1",
+    "jest-mock-extended": "^3.0.7",
     "nx": "19.5.6",
     "prettier": "^2.6.2",
     "prisma": "^5.17.0",
+    "supertest": "^7.0.0",
     "ts-jest": "^29.1.0",
     "ts-node": "10.9.1",
     "typescript": "~5.5.2"

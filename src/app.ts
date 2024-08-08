@@ -8,8 +8,8 @@ const app: Express = express();
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(authRouter);
-app.use(tournamentRouter);
+app.use('/api', authRouter);
+app.use('/api', tournamentRouter);
 app.use(errorHandler);
 
 export default app;
