@@ -1,11 +1,109 @@
 import request from 'supertest';
 import app from '../app';
+import prismaClient from '../prismaClient';
+import { createTestUser } from './testUtils';
 
-describe('User Routes', () => {
-  test('register', async () => {
-    const response = await request(app)
-      .post('/api/register')
-      .send({ nickname: 'test1', email: 'test1@gmail.com', password: 'test1' })
-      .expect(200);
+describe('Auth routes', () => {
+  const email = 'test@gmail.com';
+  const password = 'test';
+  const nickname = 'test';
+  const validTokenRegex = new RegExp(
+    '^token=([A-Za-z0-9_-]+.[A-Za-z0-9_-]+.[A-Za-z0-9_-]+);'
+  );
+  const invalidTokenRegex = new RegExp('^token=none;');
+
+  beforeEach(async () => {
+    await prismaClient.user.deleteMany();
+  });
+
+  test('/api/register', async () => {
+    const route = '/api/register';
+
+    // Not enough info
+    let response = await request(app)
+      .post(route)
+      .send({ nickname: nickname, email: email });
+
+    expect(response.status).toBe(400);
+
+    // Valid registration
+    response = await request(app)
+      .post(route)
+      .send({ nickname: nickname, email: email, password: password });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('token');
+
+    const cookie = response.headers['set-cookie'];
+    expect(cookie).toHaveLength(1);
+    expect(cookie[0]).toMatch(validTokenRegex);
+
+    // User already exists
+    response = await request(app)
+      .post(route)
+      .send({ nickname: nickname, email: email, password: password });
+
+    expect(response.status).toBe(400);
+
+    // Password not stored
+    const user = await prismaClient.user.findFirst({
+      where: { email: email },
+    });
+
+    expect(user.password).not.toBe(password);
+  });
+
+  test('/api/login', async () => {
+    const route = '/api/login';
+
+    // Invalid user
+    let response = await request(app)
+      .post(route)
+      .send({ email: 'invalid@gmail.com', password: 'invalid' });
+
+    expect(response.status).toBe(401);
+
+    // Create user
+    await createTestUser(nickname, email, password);
+
+    // Wrong password
+    response = await request(app)
+      .post(route)
+      .send({ email: email, password: 'invalid' });
+
+    expect(response.status).toBe(401);
+
+    // Correct login
+    response = await request(app)
+      .post(route)
+      .send({ email: email, password: password });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('token');
+
+    const cookie = response.headers['set-cookie'];
+    expect(cookie).toHaveLength(1);
+    expect(cookie[0]).toMatch(validTokenRegex);
+  });
+
+  test('/api/logout', async () => {
+    const route = '/api/logout';
+
+    // Logout without token
+    let response = await request(app).post(route);
+    expect(response.status).toBe(401);
+
+    const token = await createTestUser('test', 'test@gmail.com', 'test');
+
+    // Valid logout
+    response = await request(app)
+      .post(route)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+
+    const cookie = response.headers['set-cookie'];
+    expect(cookie).toHaveLength(1);
+    expect(cookie[0]).toMatch(invalidTokenRegex);
   });
 });

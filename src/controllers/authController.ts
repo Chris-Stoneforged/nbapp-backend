@@ -85,13 +85,13 @@ async function comparePasswords(
   return await bcrypt.compare(loginPassword, userPassword);
 }
 
-async function encryptPassword(password: string): Promise<string> {
+export async function encryptPassword(password: string): Promise<string> {
   const salt = await bcrypt.genSalt(10);
   const hash = await bcrypt.hash(password, salt);
   return hash;
 }
 
-function getJwtTokenForUser(user: User): string {
+export function getJwtTokenForUser(user: User): string {
   return jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_TIME_TO_LIVE,
   });
