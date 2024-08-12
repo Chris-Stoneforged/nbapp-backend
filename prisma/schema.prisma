@@ -42,5 +42,5 @@ model InviteToken {
   code            String        @unique
   expiry          DateTime
   sender_id       Int           
-  sender          User          @relation(fields: [sender_id], references: [id])
+  sender          User          @relation(fields: [sender_id], references: [id], onDelete: Cascade)
 }

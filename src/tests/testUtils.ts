@@ -22,3 +22,11 @@ export async function createTestUser(
   const token = getJwtTokenForUser(user);
   return token;
 }
+
+export async function createTournamentForUser(email: string) {
+  const tournament = await prismaClient.tournament.create({});
+  await prismaClient.user.update({
+    where: { email: email },
+    data: { tournament_id: tournament.id },
+  });
+}

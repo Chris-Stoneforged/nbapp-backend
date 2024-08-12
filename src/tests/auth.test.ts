@@ -4,9 +4,14 @@ import prismaClient from '../prismaClient';
 import { createTestUser } from './testUtils';
 
 describe('Auth routes', () => {
+  const registerRoute = '/api/register';
+  const loginRoute = '/api/login';
+  const logoutRoute = '/api/logout';
+
   const email = 'test@gmail.com';
   const password = 'test';
   const nickname = 'test';
+
   const validTokenRegex = new RegExp(
     '^token=([A-Za-z0-9_-]+.[A-Za-z0-9_-]+.[A-Za-z0-9_-]+);'
   );
@@ -16,19 +21,17 @@ describe('Auth routes', () => {
     await prismaClient.user.deleteMany();
   });
 
-  test('/api/register', async () => {
-    const route = '/api/register';
-
+  test(registerRoute, async () => {
     // Not enough info
     let response = await request(app)
-      .post(route)
+      .post(registerRoute)
       .send({ nickname: nickname, email: email });
 
     expect(response.status).toBe(400);
 
     // Valid registration
     response = await request(app)
-      .post(route)
+      .post(registerRoute)
       .send({ nickname: nickname, email: email, password: password });
 
     expect(response.status).toBe(200);
@@ -40,7 +43,7 @@ describe('Auth routes', () => {
 
     // User already exists
     response = await request(app)
-      .post(route)
+      .post(registerRoute)
       .send({ nickname: nickname, email: email, password: password });
 
     expect(response.status).toBe(400);
@@ -53,12 +56,10 @@ describe('Auth routes', () => {
     expect(user.password).not.toBe(password);
   });
 
-  test('/api/login', async () => {
-    const route = '/api/login';
-
+  test(loginRoute, async () => {
     // Invalid user
     let response = await request(app)
-      .post(route)
+      .post(loginRoute)
       .send({ email: 'invalid@gmail.com', password: 'invalid' });
 
     expect(response.status).toBe(401);
@@ -68,14 +69,14 @@ describe('Auth routes', () => {
 
     // Wrong password
     response = await request(app)
-      .post(route)
+      .post(loginRoute)
       .send({ email: email, password: 'invalid' });
 
     expect(response.status).toBe(401);
 
     // Correct login
     response = await request(app)
-      .post(route)
+      .post(loginRoute)
       .send({ email: email, password: password });
 
     expect(response.status).toBe(200);
@@ -87,17 +88,15 @@ describe('Auth routes', () => {
   });
 
   test('/api/logout', async () => {
-    const route = '/api/logout';
-
     // Logout without token
-    let response = await request(app).post(route);
+    let response = await request(app).post(logoutRoute);
     expect(response.status).toBe(401);
 
     const token = await createTestUser('test', 'test@gmail.com', 'test');
 
     // Valid logout
     response = await request(app)
-      .post(route)
+      .post(logoutRoute)
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.status).toBe(200);
