@@ -92,7 +92,7 @@ describe('Auth routes', () => {
     let response = await request(app).post(logoutRoute);
     expect(response.status).toBe(401);
 
-    const token = await createTestUser('test', 'test@gmail.com', 'test');
+    const [, token] = await createTestUser('test', 'test@gmail.com', 'test');
 
     // Valid logout
     response = await request(app)

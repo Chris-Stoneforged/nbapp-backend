@@ -154,6 +154,8 @@ export async function getTournamentInviteCode(
     );
   }
 
+  // TODO: return existing invite code if it's still valid.
+
   const expiry = new Date(
     Date.now() + Number(process.env.INVITE_TOKEN_TIME_TO_LIVE_MILLIS)
   );
