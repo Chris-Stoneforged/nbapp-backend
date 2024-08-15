@@ -44,3 +44,8 @@ model InviteToken {
   sender_id       Int           
   sender          User          @relation(fields: [sender_id], references: [id], onDelete: Cascade)
 }
+
+model Bracket {
+  id              Int           @id @default(autoincrement())
+  bracket_data    Json
+}

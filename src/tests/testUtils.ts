@@ -9,14 +9,15 @@ import crypto from 'crypto';
 export async function createTestUser(
   nickname: string,
   email: string,
-  password: string
+  password: string,
+  role: Role = 'User'
 ): Promise<[User, string]> {
   const hashedPassword = await encryptPassword(password);
   const user: User = await prismaClient.user.create({
     data: {
       email: email,
       nickname: nickname,
-      role: Role.User,
+      role: role,
       password: hashedPassword,
     },
   });
