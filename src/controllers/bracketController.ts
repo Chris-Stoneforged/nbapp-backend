@@ -18,7 +18,7 @@ export async function udpateBracket(
   }
 
   await prismaClient.bracket.upsert({
-    where: { id: 0 },
+    where: { id: 1 },
     create: { bracket_data: bracket },
     update: { bracket_data: bracket },
   });
@@ -54,34 +54,77 @@ export async function getNextPredictionToMake(
   const remainingPredictions = bracketData.matchups
     .filter(
       (matchup) =>
-        matchup.team_a != null &&
-        matchup.team_b != null &&
+        matchup.round === 1 &&
+        matchup.teamA != null &&
+        matchup.teamB != null &&
         !existingPredictions.some(
           (prediction) => prediction.matchup_id === matchup.id
         )
     )
     .sort(sortMatchup);
 
-  if (remainingPredictions.length === 0) {
+  if (remainingPredictions.length > 0) {
+    const nextPrediction = remainingPredictions[0];
+
     response.status(200).json({
       success: true,
-      messsage: 'No predictions to make',
-      data: null,
+      data: {
+        matchupId: nextPrediction.id,
+        round: nextPrediction.round,
+        teamA: nextPrediction.teamA,
+        teamB: nextPrediction.teamB,
+      },
     });
     return;
   }
 
-  const nextPrediction = remainingPredictions[0];
+  for (const prediction of existingPredictions) {
+    const predictedMatchup = bracketData.matchups.find(
+      (matchup) => matchup.id == prediction.matchup_id
+    );
 
-  console.log(remainingPredictions);
+    if (
+      existingPredictions.some(
+        (prediction) => prediction.matchup_id === predictedMatchup.advancesTo
+      )
+    ) {
+      continue;
+    }
+
+    const otherMatchup = bracketData.matchups.find(
+      (matchup) =>
+        matchup.advancesTo === predictedMatchup.advancesTo &&
+        matchup.id !== predictedMatchup.id
+    );
+    if (!otherMatchup) {
+      continue;
+    }
+
+    const otherPrediction = existingPredictions.find(
+      (prediction) => prediction.matchup_id === otherMatchup.id
+    );
+    if (!otherPrediction) {
+      continue;
+    }
+
+    response.status(200).json({
+      success: true,
+      data: {
+        matchupId: predictedMatchup.advancesTo,
+        round: predictedMatchup.round + 1,
+        teamA: prediction.winner,
+        teamB: otherPrediction.winner,
+      },
+    });
+    return;
+  }
+
   response.status(200).json({
     success: true,
-    data: {
-      matchup_id: nextPrediction.id,
-      team_a: nextPrediction.team_a,
-      team_b: nextPrediction.team_b,
-    },
+    messsage: 'No predictions to make',
+    data: null,
   });
+  return;
 }
 
 export async function makePrediction(
@@ -105,18 +148,7 @@ export async function makePrediction(
     (matchup) => matchup.id === matchupId
   );
   if (!currentPrediction) {
-    return next(
-      new ServerError(400, 'Invalid prediction - missing prediction Id')
-    );
-  }
-
-  if (
-    predictedWinner !== currentPrediction.team_a &&
-    predictedWinner !== currentPrediction.team_b
-  ) {
-    return next(
-      new ServerError(400, 'Invalid prediction - invalid winner picked')
-    );
+    return next(new ServerError(400, 'Invalid prediction Id'));
   }
 
   const existingPrediction = await prismaClient.prediction.findFirst({
@@ -124,12 +156,49 @@ export async function makePrediction(
   });
 
   if (existingPrediction) {
+    return next(new ServerError(400, 'Already made prediction for match up'));
+  }
+
+  if (
+    currentPrediction.round === 1 &&
+    predictedWinner !== currentPrediction.teamA &&
+    predictedWinner !== currentPrediction.teamB
+  ) {
     return next(
-      new ServerError(
-        400,
-        'Invalid prediction - already made prediction for match up'
-      )
+      new ServerError(400, 'Invalid prediction - invalid winner picked')
     );
+  }
+
+  if (currentPrediction.round > 1) {
+    const previousMatchups = bracketData.matchups.filter(
+      (matchup) => matchup.advancesTo === matchupId
+    );
+
+    const previousPredections = await prismaClient.prediction.findMany({
+      where: { user_id: request.user.id },
+    });
+
+    const parentPredictions = previousPredections.filter((prediction) =>
+      previousMatchups.some((matchup) => matchup.id == prediction.matchup_id)
+    );
+
+    if (parentPredictions.length !== 2) {
+      return next(
+        new ServerError(
+          400,
+          'Invalid prediction - previous predictions not made'
+        )
+      );
+    }
+
+    if (
+      predictedWinner !== parentPredictions[0].winner &&
+      predictedWinner !== parentPredictions[1].winner
+    ) {
+      return next(
+        new ServerError(400, 'Invalid prediction - invalid winner picked')
+      );
+    }
   }
 
   await prismaClient.prediction.create({
@@ -200,7 +269,7 @@ async function getBracketStateResponse(
   });
 
   const finalsMatchup = bracketData.matchups.find(
-    (matchup) => matchup.winner_plays == null
+    (matchup) => matchup.advancesTo == null
   );
 
   const matchupData = bracketData.matchups.map((matchup) => {

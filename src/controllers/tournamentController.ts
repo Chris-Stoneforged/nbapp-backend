@@ -144,8 +144,6 @@ export async function getTeamMembers(
     return { id: member.id, nickname: member.nickname };
   });
 
-  console.log(memberData);
-
   response.status(200).json({
     success: true,
     data: memberData,

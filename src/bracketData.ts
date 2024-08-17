@@ -1,9 +1,10 @@
 export type MatchupData = {
   id: number;
   round: number;
-  team_a?: string;
-  team_b?: string;
-  winner_plays?: number;
+  teamA?: string;
+  teamB?: string;
+  winner?: string;
+  advancesTo?: number;
 };
 
 export type BracketData = {
