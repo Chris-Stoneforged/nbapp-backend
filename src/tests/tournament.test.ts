@@ -13,6 +13,7 @@ describe('Tournament Routes', () => {
   const leaveRoute = '/api/tournament/leave';
   const getCodeRoute = '/api/tournament/generate-invite-code';
   const joinRoute = '/api/tournament/join';
+  const membersRoute = '/api/tournament/members';
 
   const nickname = 'test';
   const email = 'test@gmail.com';
@@ -129,5 +130,63 @@ describe('Tournament Routes', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(400);
+  });
+
+  test(membersRoute, async () => {
+    const [user, token] = await createTestUser(nickname, email, password);
+    let response = await request(app)
+      .get(membersRoute)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(400);
+
+    const tournament = await createTournamentForUser(user);
+
+    response = await request(app)
+      .get(membersRoute)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.data).toEqual([
+      {
+        id: user.id,
+        nickname: user.nickname,
+      },
+    ]);
+
+    const [member1] = await createTestUser(
+      'member1',
+      'member1@gmail.com',
+      'member1',
+      'User',
+      tournament.id
+    );
+    const [member2] = await createTestUser(
+      'member2',
+      'member2@gmail.com',
+      'member2',
+      'User',
+      tournament.id
+    );
+
+    response = await request(app)
+      .get(membersRoute)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.data).toEqual([
+      {
+        id: user.id,
+        nickname: user.nickname,
+      },
+      {
+        id: member1.id,
+        nickname: member1.nickname,
+      },
+      {
+        id: member2.id,
+        nickname: member2.nickname,
+      },
+    ]);
   });
 });

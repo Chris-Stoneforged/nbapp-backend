@@ -1,6 +1,7 @@
 import express, { Router } from 'express';
 import {
   createTournament,
+  getTeamMembers,
   getTournamentInviteCode,
   joinTournament,
   leaveTournament,
@@ -16,5 +17,6 @@ router.route('/tournament/leave').post(isUserAuthenticated, leaveTournament);
 router
   .route('/tournament/generate-invite-code')
   .post(isUserAuthenticated, getTournamentInviteCode);
+router.route('/tournament/members').get(isUserAuthenticated, getTeamMembers);
 
 export default router;

@@ -127,6 +127,31 @@ export async function joinTournament(
   });
 }
 
+export async function getTeamMembers(
+  request: Request,
+  response: Response,
+  next: NextFunction
+) {
+  if (!request.user.tournament_id) {
+    return next(new ServerError(400, 'User is not part of a tournament'));
+  }
+
+  const teamMembers = await prismaClient.user.findMany({
+    where: { tournament_id: request.user.tournament_id },
+  });
+
+  const memberData = teamMembers.map((member) => {
+    return { id: member.id, nickname: member.nickname };
+  });
+
+  console.log(memberData);
+
+  response.status(200).json({
+    success: true,
+    data: memberData,
+  });
+}
+
 export async function getTournamentInviteCode(
   request: Request,
   response: Response,

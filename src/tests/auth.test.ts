@@ -87,7 +87,7 @@ describe('Auth routes', () => {
     expect(cookie[0]).toMatch(validTokenRegex);
   });
 
-  test('/api/logout', async () => {
+  test(logoutRoute, async () => {
     // Logout without token
     let response = await request(app).post(logoutRoute);
     expect(response.status).toBe(401);

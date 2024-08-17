@@ -1,7 +1,7 @@
 import {
   encryptPassword,
   getJwtTokenForUser,
-} from 'src/controllers/authController';
+} from '../controllers/authController';
 import prismaClient from '../prismaClient';
 import { Role, Tournament, User } from '@prisma/client';
 import crypto from 'crypto';
@@ -10,7 +10,8 @@ export async function createTestUser(
   nickname: string,
   email: string,
   password: string,
-  role: Role = 'User'
+  role: Role = 'User',
+  tournament_id: number = null
 ): Promise<[User, string]> {
   const hashedPassword = await encryptPassword(password);
   const user: User = await prismaClient.user.create({
@@ -19,6 +20,7 @@ export async function createTestUser(
       nickname: nickname,
       role: role,
       password: hashedPassword,
+      tournament_id: tournament_id,
     },
   });
   const token = getJwtTokenForUser(user);
