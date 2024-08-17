@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
 import {
+  getBracketStateForUser,
   getNextPredictionToMake,
   makePrediction,
 } from '../controllers/bracketController';
@@ -12,5 +13,6 @@ router
 router
   .route('/bracket/prediction/make')
   .post(isUserAuthenticated, makePrediction);
+router.route('/bracket/state').get(isUserAuthenticated, getBracketStateForUser);
 
 export default router;

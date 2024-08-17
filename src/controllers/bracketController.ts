@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
 import ServerError from '../serverError';
 import { BracketData, MatchupData } from '../bracketData';
+import { User } from '@prisma/client';
 
 // Admin route
 export async function udpateBracket(
@@ -102,6 +103,12 @@ export async function makePrediction(
   const predictedWinner = request.body.predictedWinner;
 
   const bracket = await prismaClient.bracket.findFirst();
+  if (!bracket) {
+    return next(
+      new ServerError(500, 'Cannot make prediction - No bracket set')
+    );
+  }
+
   const bracketData = bracket.bracket_data as BracketData;
 
   const currentPrediction = bracketData.matchups.find(
@@ -146,5 +153,54 @@ export async function makePrediction(
   response.status(200).json({
     success: true,
     message: 'Successfully made prediction',
+  });
+}
+
+export async function getBracketStateForUser(
+  request: Request,
+  response: Response,
+  next: NextFunction
+) {
+  const user: User =
+    request.body.user_id === undefined
+      ? request.user
+      : await prismaClient.user.findFirst({
+          where: { id: request.body.user_id },
+        });
+
+  if (!user) {
+    return next(new ServerError(400, 'Cannot retrieve state - Invalid user'));
+  }
+
+  const bracket = await prismaClient.bracket.findFirst();
+  if (!bracket) {
+    return next(new ServerError(500, 'Cannot retrieve state - No bracket set'));
+  }
+
+  const userPredictions = await prismaClient.prediction.findMany({
+    where: { user_id: user.id },
+  });
+
+  const bracketData = bracket.bracket_data as BracketData;
+  const finalsMatchup = bracketData.matchups.find(
+    (matchup) => matchup.winner_plays == null
+  );
+
+  const matchupData = bracketData.matchups.map((matchup) => {
+    const userPrediction = userPredictions.find(
+      (prediction) => prediction.matchup_id === matchup.id
+    );
+    return {
+      ...matchup,
+      predictedWinner: userPrediction?.winner,
+    };
+  });
+
+  response.status(200).json({
+    success: true,
+    data: {
+      matchups: matchupData,
+      root_matchup_id: finalsMatchup.id,
+    },
   });
 }
