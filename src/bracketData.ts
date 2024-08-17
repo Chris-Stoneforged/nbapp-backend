@@ -9,3 +9,5 @@ export type MatchupData = {
 export type BracketData = {
   matchups: MatchupData[];
 };
+
+export type MatchupState = MatchupData & { predictedWinner?: string };

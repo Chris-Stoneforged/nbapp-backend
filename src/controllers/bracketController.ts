@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
 import ServerError from '../serverError';
-import { BracketData, MatchupData } from '../bracketData';
+import { BracketData, MatchupData, MatchupState } from '../bracketData';
 import { User } from '@prisma/client';
 
 // Admin route
@@ -84,16 +84,6 @@ export async function getNextPredictionToMake(
   });
 }
 
-function sortMatchup(a: MatchupData, b: MatchupData): number {
-  if (a.round < b.round) {
-    return -1;
-  } else if (a.round > b.round) {
-    return 1;
-  }
-
-  return 0;
-}
-
 export async function makePrediction(
   request: Request,
   response: Response,
@@ -150,9 +140,18 @@ export async function makePrediction(
     },
   });
 
+  const [matchupData, finalsMatchupId] = await getBracketStateResponse(
+    request.user,
+    bracketData
+  );
+
   response.status(200).json({
     success: true,
     message: 'Successfully made prediction',
+    data: {
+      matchups: matchupData,
+      root_matchup_id: finalsMatchupId,
+    },
   });
 }
 
@@ -177,11 +176,29 @@ export async function getBracketStateForUser(
     return next(new ServerError(500, 'Cannot retrieve state - No bracket set'));
   }
 
+  const bracketData = bracket.bracket_data as BracketData;
+  const [matchupData, finalsMatchupId] = await getBracketStateResponse(
+    user,
+    bracketData
+  );
+
+  response.status(200).json({
+    success: true,
+    data: {
+      matchups: matchupData,
+      root_matchup_id: finalsMatchupId,
+    },
+  });
+}
+
+async function getBracketStateResponse(
+  user: User,
+  bracketData: BracketData
+): Promise<[MatchupState[], number]> {
   const userPredictions = await prismaClient.prediction.findMany({
     where: { user_id: user.id },
   });
 
-  const bracketData = bracket.bracket_data as BracketData;
   const finalsMatchup = bracketData.matchups.find(
     (matchup) => matchup.winner_plays == null
   );
@@ -196,11 +213,15 @@ export async function getBracketStateForUser(
     };
   });
 
-  response.status(200).json({
-    success: true,
-    data: {
-      matchups: matchupData,
-      root_matchup_id: finalsMatchup.id,
-    },
-  });
+  return [matchupData, finalsMatchup.id];
+}
+
+function sortMatchup(a: MatchupData, b: MatchupData): number {
+  if (a.round < b.round) {
+    return -1;
+  } else if (a.round > b.round) {
+    return 1;
+  }
+
+  return 0;
 }
