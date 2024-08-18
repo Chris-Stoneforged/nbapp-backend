@@ -27,8 +27,13 @@ export async function createTestUser(
   return [user, token];
 }
 
-export async function createTournamentForUser(user: User): Promise<Tournament> {
-  const tournament = await prismaClient.tournament.create({});
+export async function createTournamentForUser(
+  user: User,
+  bracket_id?: number
+): Promise<Tournament> {
+  const tournament = await prismaClient.tournament.create({
+    data: { bracket_id: bracket_id ?? 0 },
+  });
   await prismaClient.user.update({
     where: { id: user.id },
     data: { tournament_id: tournament.id },

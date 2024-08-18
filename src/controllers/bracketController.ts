@@ -11,23 +11,44 @@ export async function udpateBracket(
   next: NextFunction
 ): Promise<void> {
   // TODO - validate this cast (using zod?)
-  const bracket = request.body.bracketJson as BracketData;
-
-  if (!bracket) {
+  // TODO: Introduce validation for correct number of rounds, no dead ends, valid number of matchups, etc.
+  const bracketData = request.body.bracketJson as BracketData;
+  console.log(bracketData);
+  if (!bracketData) {
     return next(new ServerError(400, 'error parsing bracket JSON.'));
   }
 
-  await prismaClient.bracket.upsert({
-    where: { id: 1 },
-    create: { bracket_data: bracket },
-    update: { bracket_data: bracket },
+  const bracket = await prismaClient.bracket.upsert({
+    where: { bracket_name: bracketData.bracketName },
+    update: {},
+    create: { bracket_name: bracketData.bracketName },
+  });
+
+  await prismaClient.matchup.deleteMany({ where: { bracket_id: bracket.id } });
+  await prismaClient.matchup.createMany({
+    data: bracketData.matchups.map((matchup) => {
+      return {
+        bracket_id: bracket.id,
+        ...matchup,
+      };
+    }),
   });
 
   response
     .status(200)
     .json({ success: true, message: 'Successfully updated bracket data.' });
+}
 
-  // TODO: Introduce validation for correct number of rounds, no dead ends, valid number of matchups, etc.
+export async function getAvailableBrackets(
+  request: Request,
+  response: Response,
+  next: NextFunction
+) {
+  const brackets = await prismaClient.bracket.findMany();
+  response.status(200).json({
+    success: true,
+    data: brackets,
+  });
 }
 
 export async function getNextPredictionToMake(
@@ -45,63 +66,59 @@ export async function getNextPredictionToMake(
     return;
   }
 
-  const bracketData = bracket.bracket_data as BracketData;
-
-  const existingPredictions = await prismaClient.prediction.findMany({
-    where: { user_id: request.user.id },
+  const nextRemainingRoundOnePrediction = await prismaClient.matchup.findFirst({
+    where: {
+      AND: [
+        { round: 1 },
+        {
+          predictions: {
+            none: {
+              user_id: request.user.id,
+            },
+          },
+        },
+      ],
+    },
   });
 
-  const remainingPredictions = bracketData.matchups
-    .filter(
-      (matchup) =>
-        matchup.round === 1 &&
-        matchup.teamA != null &&
-        matchup.teamB != null &&
-        !existingPredictions.some(
-          (prediction) => prediction.matchup_id === matchup.id
-        )
-    )
-    .sort(sortMatchup);
-
-  if (remainingPredictions.length > 0) {
-    const nextPrediction = remainingPredictions[0];
-
+  if (nextRemainingRoundOnePrediction) {
     response.status(200).json({
       success: true,
       data: {
-        matchupId: nextPrediction.id,
-        round: nextPrediction.round,
-        teamA: nextPrediction.teamA,
-        teamB: nextPrediction.teamB,
+        matchupId: nextRemainingRoundOnePrediction.id,
+        round: nextRemainingRoundOnePrediction.round,
+        teamA: nextRemainingRoundOnePrediction.team_a,
+        teamB: nextRemainingRoundOnePrediction.team_b,
       },
     });
     return;
   }
 
-  for (const prediction of existingPredictions) {
-    const predictedMatchup = bracketData.matchups.find(
-      (matchup) => matchup.id == prediction.matchup_id
-    );
+  const existingPredictions = await prismaClient.prediction.findMany({
+    where: {
+      user_id: request.user.id,
+    },
+    include: {
+      matchup: true,
+    },
+  });
 
+  for (const existingPrediction of existingPredictions) {
+    // If there's already been a prediction for the existingPrediction's next match (advances_to)
     if (
       existingPredictions.some(
-        (prediction) => prediction.matchup_id === predictedMatchup.advancesTo
+        (prediction) =>
+          prediction.matchup_id === existingPrediction.matchup.advances_to
       )
     ) {
       continue;
     }
 
-    const otherMatchup = bracketData.matchups.find(
-      (matchup) =>
-        matchup.advancesTo === predictedMatchup.advancesTo &&
-        matchup.id !== predictedMatchup.id
-    );
-    if (!otherMatchup) {
-      continue;
-    }
-
     const otherPrediction = existingPredictions.find(
-      (prediction) => prediction.matchup_id === otherMatchup.id
+      (prediction) =>
+        prediction.matchup.advances_to ===
+          existingPrediction.matchup.advances_to &&
+        prediction.matchup_id !== existingPrediction.matchup_id
     );
     if (!otherPrediction) {
       continue;
@@ -110,14 +127,55 @@ export async function getNextPredictionToMake(
     response.status(200).json({
       success: true,
       data: {
-        matchupId: predictedMatchup.advancesTo,
-        round: predictedMatchup.round + 1,
-        teamA: prediction.winner,
+        matchupId: existingPrediction.matchup.advances_to,
+        round: existingPrediction.matchup.round + 1,
+        teamA: existingPrediction.winner,
         teamB: otherPrediction.winner,
       },
     });
     return;
   }
+
+  // for (const prediction of existingPredictions) {
+  //   const predictedMatchup = bracketData.matchups.find(
+  //     (matchup) => matchup.id == prediction.matchup_id
+  //   );
+
+  //   if (
+  //     existingPredictions.some(
+  //       (prediction) => prediction.matchup_id === predictedMatchup.advances_to
+  //     )
+  //   ) {
+  //     continue;
+  //   }
+
+  //   const otherMatchup = bracketData.matchups.find(
+  //     (matchup) =>
+  //       matchup.advances_to === predictedMatchup.advances_to &&
+  //       matchup.id !== predictedMatchup.id
+  //   );
+  //   if (!otherMatchup) {
+  //     continue;
+  //   }
+
+  //   const otherPrediction = existingPredictions.find(
+  //     (prediction) => prediction.matchup_id === otherMatchup.id
+  //   );
+  //   if (!otherPrediction) {
+  //     continue;
+  //   }
+
+  //   response.status(200).json({
+  //     success: true,
+  //     data: {
+  //       matchupId: predictedMatchup.advances_to,
+  //       round: predictedMatchup.round + 1,
+  //       teamA: prediction.winner,
+  //       teamB: otherPrediction.winner,
+  //     },
+  //   });
+  //   return;
+  // }
 
   response.status(200).json({
     success: true,
@@ -132,54 +190,49 @@ export async function makePrediction(
   response: Response,
   next: NextFunction
 ) {
-  const matchupId = request.body.matchup;
+  const matchupId: number = request.body.matchup;
   const predictedWinner = request.body.predictedWinner;
 
-  const bracket = await prismaClient.bracket.findFirst();
+  const bracket = await prismaClient.bracket.findFirst({
+    where: { id: request.body.bracketId },
+  });
   if (!bracket) {
     return next(
-      new ServerError(500, 'Cannot make prediction - No bracket set')
+      new ServerError(500, 'Cannot make prediction - Invalid bracket id')
     );
   }
 
-  const bracketData = bracket.bracket_data as BracketData;
-
-  const currentPrediction = bracketData.matchups.find(
-    (matchup) => matchup.id === matchupId
-  );
-  if (!currentPrediction) {
-    return next(new ServerError(400, 'Invalid prediction Id'));
-  }
-
-  const existingPrediction = await prismaClient.prediction.findFirst({
-    where: { user_id: request.user.id, matchup_id: matchupId },
+  const userPredictions = await prismaClient.prediction.findMany({
+    where: { user_id: request.user.id },
+    include: { matchup: true },
   });
 
-  if (existingPrediction) {
+  if (
+    userPredictions.some((prediction) => prediction.matchup_id === matchupId)
+  ) {
     return next(new ServerError(400, 'Already made prediction for match up'));
   }
 
+  const predictedMatchup = await prismaClient.matchup.findFirst({
+    where: { id: matchupId },
+  });
+  if (!predictedMatchup) {
+    return next(new ServerError(400, 'Invalid prediction Id'));
+  }
+
   if (
-    currentPrediction.round === 1 &&
-    predictedWinner !== currentPrediction.teamA &&
-    predictedWinner !== currentPrediction.teamB
+    predictedMatchup.round === 1 &&
+    predictedWinner !== predictedMatchup.team_a &&
+    predictedWinner !== predictedMatchup.team_b
   ) {
     return next(
       new ServerError(400, 'Invalid prediction - invalid winner picked')
     );
   }
 
-  if (currentPrediction.round > 1) {
-    const previousMatchups = bracketData.matchups.filter(
-      (matchup) => matchup.advancesTo === matchupId
-    );
-
-    const previousPredections = await prismaClient.prediction.findMany({
-      where: { user_id: request.user.id },
-    });
-
-    const parentPredictions = previousPredections.filter((prediction) =>
-      previousMatchups.some((matchup) => matchup.id == prediction.matchup_id)
+  if (predictedMatchup.round > 1) {
+    const parentPredictions = userPredictions.filter(
+      (prediction) => prediction.matchup.advances_to === matchupId
     );
 
     if (parentPredictions.length !== 2) {
@@ -211,7 +264,7 @@ export async function makePrediction(
 
   const [matchupData, finalsMatchupId] = await getBracketStateResponse(
     request.user,
-    bracketData
+    bracket.id
   );
 
   response.status(200).json({
@@ -240,15 +293,16 @@ export async function getBracketStateForUser(
     return next(new ServerError(400, 'Cannot retrieve state - Invalid user'));
   }
 
-  const bracket = await prismaClient.bracket.findFirst();
+  const bracket = await prismaClient.bracket.findFirst({
+    where: { id: request.body.bracketId },
+  });
   if (!bracket) {
     return next(new ServerError(500, 'Cannot retrieve state - No bracket set'));
   }
 
-  const bracketData = bracket.bracket_data as BracketData;
   const [matchupData, finalsMatchupId] = await getBracketStateResponse(
     user,
-    bracketData
+    bracket.id
   );
 
   response.status(200).json({
@@ -262,35 +316,31 @@ export async function getBracketStateForUser(
 
 async function getBracketStateResponse(
   user: User,
-  bracketData: BracketData
+  bracketId: number
 ): Promise<[MatchupState[], number]> {
-  const userPredictions = await prismaClient.prediction.findMany({
-    where: { user_id: user.id },
+  const matchups = await prismaClient.matchup.findMany({
+    where: { bracket_id: bracketId },
+    include: {
+      predictions: {
+        where: {
+          user_id: user.id,
+        },
+      },
+    },
   });
 
-  const finalsMatchup = bracketData.matchups.find(
-    (matchup) => matchup.advancesTo == null
-  );
-
-  const matchupData = bracketData.matchups.map((matchup) => {
-    const userPrediction = userPredictions.find(
-      (prediction) => prediction.matchup_id === matchup.id
-    );
+  const matchupData = matchups.map((matchup) => {
     return {
-      ...matchup,
-      predictedWinner: userPrediction?.winner,
+      id: matchup.id,
+      round: matchup.round,
+      teamA: matchup.team_a,
+      teamB: matchup.team_b,
+      predictedWinner:
+        matchup.predictions.length > 0 ? matchup.predictions[0].winner : null,
     };
   });
 
+  const finalsMatchup = matchups.find((matchup) => matchup.advances_to == null);
+
   return [matchupData, finalsMatchup.id];
-}
-
-function sortMatchup(a: MatchupData, b: MatchupData): number {
-  if (a.round < b.round) {
-    return -1;
-  } else if (a.round > b.round) {
-    return 1;
-  }
-
-  return 0;
 }

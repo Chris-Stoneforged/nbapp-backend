@@ -18,7 +18,9 @@ export async function createTournament(
   }
 
   // Create tournament
-  const tournament = await prismaClient.tournament.create({});
+  const tournament = await prismaClient.tournament.create({
+    data: { bracket_id: request.body.bracketId },
+  });
 
   // Assign user to tournament
   await prismaClient.user.update({

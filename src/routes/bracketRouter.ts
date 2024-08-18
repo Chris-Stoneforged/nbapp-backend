@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
 import {
+  getAvailableBrackets,
   getBracketStateForUser,
   getNextPredictionToMake,
   makePrediction,
@@ -14,5 +15,8 @@ router
   .route('/bracket/prediction/make')
   .post(isUserAuthenticated, makePrediction);
 router.route('/bracket/state').get(isUserAuthenticated, getBracketStateForUser);
+router
+  .route('/bracket/available')
+  .get(isUserAuthenticated, getAvailableBrackets);
 
 export default router;

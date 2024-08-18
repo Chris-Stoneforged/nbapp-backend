@@ -1,13 +1,14 @@
 export type MatchupData = {
   id: number;
   round: number;
-  teamA?: string;
-  teamB?: string;
+  team_a?: string;
+  team_b?: string;
   winner?: string;
-  advancesTo?: number;
+  advances_to?: number;
 };
 
 export type BracketData = {
+  bracketName: string;
   matchups: MatchupData[];
 };
 
