@@ -24,6 +24,7 @@ export async function udpateBracket(
     create: { bracket_name: bracketData.bracketName },
   });
 
+  // TODO: Upsert this
   await prismaClient.matchup.deleteMany({ where: { bracket_id: bracket.id } });
   await prismaClient.matchup.createMany({
     data: bracketData.matchups.map((matchup) => {
@@ -135,47 +136,6 @@ export async function getNextPredictionToMake(
     });
     return;
   }
-
-  // for (const prediction of existingPredictions) {
-  //   const predictedMatchup = bracketData.matchups.find(
-  //     (matchup) => matchup.id == prediction.matchup_id
-  //   );
-
-  //   if (
-  //     existingPredictions.some(
-  //       (prediction) => prediction.matchup_id === predictedMatchup.advances_to
-  //     )
-  //   ) {
-  //     continue;
-  //   }
-
-  //   const otherMatchup = bracketData.matchups.find(
-  //     (matchup) =>
-  //       matchup.advances_to === predictedMatchup.advances_to &&
-  //       matchup.id !== predictedMatchup.id
-  //   );
-  //   if (!otherMatchup) {
-  //     continue;
-  //   }
-
-  //   const otherPrediction = existingPredictions.find(
-  //     (prediction) => prediction.matchup_id === otherMatchup.id
-  //   );
-  //   if (!otherPrediction) {
-  //     continue;
-  //   }
-
-  //   response.status(200).json({
-  //     success: true,
-  //     data: {
-  //       matchupId: predictedMatchup.advances_to,
-  //       round: predictedMatchup.round + 1,
-  //       teamA: prediction.winner,
-  //       teamB: otherPrediction.winner,
-  //     },
-  //   });
-  //   return;
-  // }
 
   response.status(200).json({
     success: true,
@@ -330,17 +290,23 @@ async function getBracketStateResponse(
   });
 
   const matchupData = matchups.map((matchup) => {
-    return {
+    const parentMatchups = matchups.filter(
+      (match) => match.advances_to === matchup.id
+    );
+
+    const result: MatchupState = {
       id: matchup.id,
       round: matchup.round,
-      teamA: matchup.team_a,
-      teamB: matchup.team_b,
-      predictedWinner:
-        matchup.predictions.length > 0 ? matchup.predictions[0].winner : null,
+      team_a: matchup.team_a ?? parentMatchups[0].predictions[0]?.winner,
+      team_b: matchup.team_b ?? parentMatchups[1].predictions[0]?.winner,
     };
+    if (matchup.predictions.length > 0) {
+      result.predictedWinner = matchup.predictions[0].winner;
+    }
+
+    return result;
   });
 
   const finalsMatchup = matchups.find((matchup) => matchup.advances_to == null);
-
   return [matchupData, finalsMatchup.id];
 }
