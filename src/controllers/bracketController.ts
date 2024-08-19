@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
 import ServerError from '../serverError';
-import { BracketData, MatchupData, MatchupState } from '../bracketData';
+import { BracketData, MatchupState } from '../bracketData';
 import { User } from '@prisma/client';
 
 // Admin route
@@ -24,16 +24,22 @@ export async function udpateBracket(
     create: { bracket_name: bracketData.bracketName },
   });
 
-  // TODO: Upsert this
-  await prismaClient.matchup.deleteMany({ where: { bracket_id: bracket.id } });
-  await prismaClient.matchup.createMany({
-    data: bracketData.matchups.map((matchup) => {
-      return {
+  // would be better to bulk delete and create again, but we can't do
+  // that here since prediction model has relation to matchup
+  for (const matchup of bracketData.matchups) {
+    await prismaClient.matchup.upsert({
+      where: {
+        id: matchup.id,
+      },
+      create: {
         bracket_id: bracket.id,
         ...matchup,
-      };
-    }),
-  });
+      },
+      update: {
+        ...matchup,
+      },
+    });
+  }
 
   response
     .status(200)
