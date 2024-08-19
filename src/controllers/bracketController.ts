@@ -324,6 +324,7 @@ async function getBracketStateResponse(
       round: matchup.round,
       team_a: matchup.team_a ?? parentMatchups[0].predictions[0]?.winner,
       team_b: matchup.team_b ?? parentMatchups[1].predictions[0]?.winner,
+      winner: matchup.winner,
     };
     if (matchup.predictions.length > 0) {
       result.predictedWinner = matchup.predictions[0].winner;
