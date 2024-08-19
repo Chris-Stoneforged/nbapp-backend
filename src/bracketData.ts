@@ -8,6 +8,7 @@ export type MatchupData = {
 };
 
 export type BracketData = {
+  bracketId: number;
   bracketName: string;
   matchups: MatchupData[];
 };

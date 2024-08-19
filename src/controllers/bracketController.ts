@@ -13,15 +13,17 @@ export async function udpateBracket(
   // TODO - validate this cast (using zod?)
   // TODO: Introduce validation for correct number of rounds, no dead ends, valid number of matchups, etc.
   const bracketData = request.body.bracketJson as BracketData;
-  console.log(bracketData);
   if (!bracketData) {
     return next(new ServerError(400, 'error parsing bracket JSON.'));
   }
 
   const bracket = await prismaClient.bracket.upsert({
-    where: { bracket_name: bracketData.bracketName },
-    update: {},
-    create: { bracket_name: bracketData.bracketName },
+    where: { id: bracketData.bracketId },
+    update: { bracket_name: bracketData.bracketName },
+    create: {
+      id: bracketData.bracketId,
+      bracket_name: bracketData.bracketName,
+    },
   });
 
   // would be better to bulk delete and create again, but we can't do
@@ -29,9 +31,13 @@ export async function udpateBracket(
   for (const matchup of bracketData.matchups) {
     await prismaClient.matchup.upsert({
       where: {
-        id: matchup.id,
+        id_bracket_id: {
+          id: matchup.id,
+          bracket_id: bracket.id,
+        },
       },
       create: {
+        id: matchup.id,
         bracket_id: bracket.id,
         ...matchup,
       },
@@ -48,8 +54,7 @@ export async function udpateBracket(
 
 export async function getAvailableBrackets(
   request: Request,
-  response: Response,
-  next: NextFunction
+  response: Response
 ) {
   const brackets = await prismaClient.bracket.findMany();
   response.status(200).json({
@@ -60,8 +65,7 @@ export async function getAvailableBrackets(
 
 export async function getNextPredictionToMake(
   request: Request,
-  response: Response,
-  next: NextFunction
+  response: Response
 ) {
   const bracket = await prismaClient.bracket.findFirst();
   if (!bracket) {
@@ -223,6 +227,7 @@ export async function makePrediction(
   await prismaClient.prediction.create({
     data: {
       user_id: request.user.id,
+      bracket_id: bracket.id,
       matchup_id: matchupId,
       winner: predictedWinner,
     },
