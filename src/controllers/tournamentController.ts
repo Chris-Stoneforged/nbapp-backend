@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
 import ServerError from '../serverError';
 import crypto from 'crypto';
+import exp from 'constants';
 
 export async function createTournament(
   request: Request,
@@ -17,9 +18,18 @@ export async function createTournament(
     );
   }
 
+  const bracket = await prismaClient.bracket.findFirst({
+    where: { id: request.body.bracketId },
+  });
+  if (!bracket) {
+    return next(
+      new ServerError(400, 'Cannot create tournament, invalid bracket')
+    );
+  }
+
   // Create tournament
   const tournament = await prismaClient.tournament.create({
-    data: { bracket_id: request.body.bracketId },
+    data: { bracket_id: bracket.id },
   });
 
   // Assign user to tournament
@@ -110,7 +120,14 @@ export async function joinTournament(
 
   // Check token is not expired
   if (inviteToken.expiry <= new Date(Date.now())) {
-    await prismaClient.inviteToken.delete({ where: { id: inviteToken.id } });
+    await prismaClient.inviteToken.delete({
+      where: {
+        id: {
+          sender_id: inviteToken.sender_id,
+          tournament_id: inviteToken.tournament_id,
+        },
+      },
+    });
     return next(new ServerError(400, 'Invite token expired!'));
   }
 
@@ -179,13 +196,30 @@ export async function getTournamentInviteCode(
     );
   }
 
-  // TODO: return existing invite code if it's still valid.
-
   const expiry = new Date(
     Date.now() + Number(process.env.INVITE_TOKEN_TIME_TO_LIVE_MILLIS)
   );
   const string = `${tournament.id}${request.user.id}${expiry}`;
   const code = crypto.createHash('sha256').update(string).digest('hex');
+
+  await prismaClient.inviteToken.upsert({
+    where: {
+      id: {
+        sender_id: request.user.id,
+        tournament_id: tournament.id,
+      },
+    },
+    update: {
+      expiry: expiry,
+      code: code,
+    },
+    create: {
+      tournament_id: tournament.id,
+      sender_id: request.user.id,
+      expiry: expiry,
+      code: code,
+    },
+  });
 
   // Create new token
   await prismaClient.inviteToken.create({

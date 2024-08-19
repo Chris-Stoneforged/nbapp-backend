@@ -39,13 +39,13 @@ model Tournament {
 }
 
 model InviteToken {
-  id              Int           @id @default(autoincrement())
   tournament_id   Int
   tournament      Tournament    @relation(fields: [tournament_id], references: [id], onDelete: Cascade)
   code            String        @unique
   expiry          DateTime
   sender_id       Int           
   sender          User          @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+  @@id(name: "id", [sender_id, tournament_id])
 }
 
 model Bracket {
