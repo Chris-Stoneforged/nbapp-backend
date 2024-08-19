@@ -67,7 +67,9 @@ export async function getNextPredictionToMake(
   request: Request,
   response: Response
 ) {
-  const bracket = await prismaClient.bracket.findFirst();
+  const bracket = await prismaClient.bracket.findFirst({
+    where: { id: request.body.bracketId },
+  });
   if (!bracket) {
     response.status(200).json({
       success: true,
@@ -81,6 +83,7 @@ export async function getNextPredictionToMake(
     where: {
       AND: [
         { round: 1 },
+        { winner: null },
         {
           predictions: {
             none: {
@@ -132,6 +135,13 @@ export async function getNextPredictionToMake(
         prediction.matchup_id !== existingPrediction.matchup_id
     );
     if (!otherPrediction) {
+      continue;
+    }
+
+    const nextPrediction = await prismaClient.matchup.findFirst({
+      where: { id: existingPrediction.matchup.advances_to },
+    });
+    if (nextPrediction.winner) {
       continue;
     }
 
@@ -188,6 +198,10 @@ export async function makePrediction(
   });
   if (!predictedMatchup) {
     return next(new ServerError(400, 'Invalid prediction Id'));
+  }
+
+  if (predictedMatchup.winner) {
+    return next(new ServerError(400, 'Matchup is already decided'));
   }
 
   if (
