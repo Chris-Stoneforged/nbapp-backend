@@ -24,8 +24,9 @@ model User {
   nickname        String
   password        String        
   role            Role
-  tournament_id   Int?
-  tournament      Tournament?    @relation(fields: [tournament_id], references: [id])
+  //tournament_id   Int?
+  //tournament      Tournament?    @relation(fields: [tournament_id], references: [id])
+  tournaments     Tournament[]
   sent_tokens     InviteToken[]
   predictions     Prediction[]
 }

@@ -2,49 +2,65 @@ import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
 import ServerError from '../serverError';
 import crypto from 'crypto';
-import exp from 'constants';
 
 export async function createTournament(
   request: Request,
   response: Response,
   next: NextFunction
 ) {
-  if (request.user.tournament_id) {
-    return next(
-      new ServerError(
-        400,
-        'Cannot create tournament - user is already in a tournament'
-      )
-    );
-  }
-
   const bracket = await prismaClient.bracket.findFirst({
     where: { id: request.body.bracketId },
   });
+
   if (!bracket) {
     return next(
       new ServerError(400, 'Cannot create tournament, invalid bracket')
     );
   }
 
-  // Create tournament
-  const tournament = await prismaClient.tournament.create({
-    data: { bracket_id: bracket.id },
+  const existingTournament = await prismaClient.tournament.findFirst({
+    where: {
+      users: {
+        some: {
+          id: request.user.id,
+        },
+      },
+      bracket_id: request.body.bracketId,
+    },
   });
 
-  // Assign user to tournament
+  if (existingTournament) {
+    return next(
+      new ServerError(400, 'User is already in a tournament for this bracket')
+    );
+  }
+
+  const tournament = await prismaClient.tournament.create({
+    data: {
+      bracket_id: bracket.id,
+    },
+  });
+
   await prismaClient.user.update({
     where: {
       id: request.user.id,
     },
     data: {
-      tournament_id: tournament.id,
+      tournaments: {
+        connect: {
+          id: tournament.id,
+        },
+      },
     },
   });
 
   response.status(200).json({
     success: true,
     message: 'Successfully created tournament',
+    data: {
+      tournamentId: tournament.id,
+      bracketName: bracket.bracket_name,
+    },
   });
 }
 
@@ -53,42 +69,46 @@ export async function leaveTournament(
   response: Response,
   next: NextFunction
 ) {
-  if (!request.user.tournament_id) {
+  const tournament = await prismaClient.tournament.findFirst({
+    where: {
+      id: request.body.tournamentId ?? 0,
+    },
+    include: {
+      users: true,
+    },
+  });
+
+  if (
+    !tournament ||
+    !tournament.users.some((user) => user.id === request.user.id)
+  ) {
     return next(
-      new ServerError(
-        400,
-        'Cannot leave tournament - user is not in a tournament'
-      )
+      new ServerError(400, 'Could not find tournament with specified Id')
     );
   }
 
-  const tournamentId = request.user.tournament_id;
-
-  // Remove tournament id from user
   await prismaClient.user.update({
     where: {
       id: request.user.id,
     },
     data: {
-      tournament_id: null,
-    },
-  });
-
-  // Find how many users are remaining in the tournament
-  const tournamentCount = await prismaClient.user.count({
-    where: {
-      tournament_id: tournamentId,
+      tournaments: {
+        disconnect: {
+          id: tournament.id,
+        },
+      },
     },
   });
 
   // If no users remain in the tournament, delete it
-  if (tournamentCount === 0) {
-    await prismaClient.tournament.delete({
-      where: {
-        id: tournamentId,
+  await prismaClient.tournament.delete({
+    where: {
+      id: tournament.id,
+      users: {
+        none: {},
       },
-    });
-  }
+    },
+  });
 
   response.status(200).json({
     success: true,
@@ -101,12 +121,6 @@ export async function joinTournament(
   response: Response,
   next: NextFunction
 ) {
-  if (request.user.tournament_id) {
-    return next(
-      new ServerError(400, 'Cannot join team - user is already in a team')
-    );
-  }
-
   const code = request.params.code;
   const inviteToken = await prismaClient.inviteToken.findFirst({
     where: {
@@ -115,10 +129,9 @@ export async function joinTournament(
   });
 
   if (!inviteToken) {
-    return next(new ServerError(400, 'Invalid invite token'));
+    return next(new ServerError(400, 'Invalid invite code'));
   }
 
-  // Check token is not expired
   if (inviteToken.expiry <= new Date(Date.now())) {
     await prismaClient.inviteToken.delete({
       where: {
@@ -128,7 +141,22 @@ export async function joinTournament(
         },
       },
     });
-    return next(new ServerError(400, 'Invite token expired!'));
+    return next(new ServerError(400, 'Invite code expired!'));
+  }
+
+  const tournament = await prismaClient.tournament.findFirst({
+    where: {
+      id: inviteToken.tournament_id,
+    },
+    include: { users: true, bracket: true },
+  });
+
+  if (!tournament) {
+    return next(new ServerError(400, 'Invalid invite code'));
+  }
+
+  if (tournament.users.some((user) => user.id === request.user.id)) {
+    return next(new ServerError(400, 'User is already in this team'));
   }
 
   await prismaClient.user.update({
@@ -136,13 +164,52 @@ export async function joinTournament(
       id: request.user.id,
     },
     data: {
-      tournament_id: inviteToken.tournament_id,
+      tournaments: {
+        connect: {
+          id: tournament.id,
+        },
+      },
     },
   });
 
   response.status(200).json({
     success: true,
     message: 'Successfully joined team',
+    data: {
+      tournamentId: tournament.id,
+      bracketName: tournament.bracket.bracket_name,
+    },
+  });
+}
+
+export async function getUsersTournaments(
+  request: Request,
+  response: Response,
+  next: NextFunction
+) {
+  const userWithTournaments = await prismaClient.user.findFirst({
+    where: {
+      id: request.user.id,
+    },
+    include: {
+      tournaments: {
+        include: {
+          bracket: true,
+        },
+      },
+    },
+  });
+
+  const tournamentData = userWithTournaments.tournaments.map((tournament) => {
+    return {
+      tournamentId: tournament.id,
+      bracketName: tournament.bracket.bracket_name,
+    };
+  });
+
+  response.status(200).json({
+    success: true,
+    data: tournamentData,
   });
 }
 
@@ -151,15 +218,28 @@ export async function getTeamMembers(
   response: Response,
   next: NextFunction
 ) {
-  if (!request.user.tournament_id) {
-    return next(new ServerError(400, 'User is not part of a tournament'));
-  }
-
-  const teamMembers = await prismaClient.user.findMany({
-    where: { tournament_id: request.user.tournament_id },
+  const tournament = await prismaClient.tournament.findFirst({
+    where: {
+      id: request.body.tournamentId,
+    },
+    include: {
+      users: true,
+    },
   });
 
-  const memberData = teamMembers.map((member) => {
+  if (
+    !tournament ||
+    !tournament.users.some((user) => user.id === request.user.id)
+  ) {
+    return next(
+      new ServerError(
+        400,
+        `User is not in tournament with id ${request.body.tournamentId}`
+      )
+    );
+  }
+
+  const memberData = tournament.users.map((member) => {
     return { id: member.id, nickname: member.nickname };
   });
 
@@ -174,24 +254,21 @@ export async function getTournamentInviteCode(
   response: Response,
   next: NextFunction
 ) {
-  if (!request.user.tournament_id) {
-    return next(
-      new ServerError(
-        400,
-        'Cannot get invite code - user is not part of a tournament'
-      )
-    );
-  }
-
   const tournament = await prismaClient.tournament.findFirst({
-    where: { id: request.user.tournament_id },
+    where: { id: request.body.tournamentId ?? 0 },
+    include: {
+      users: true,
+    },
   });
 
-  if (!tournament) {
+  if (
+    !tournament ||
+    !tournament.users.some((user) => user.id === request.user.id)
+  ) {
     return next(
       new ServerError(
         400,
-        'Cannot get invite code - user is not part of a tournament'
+        `User is not in tournament with id ${request.body.tournamentId}`
       )
     );
   }
@@ -214,16 +291,6 @@ export async function getTournamentInviteCode(
       code: code,
     },
     create: {
-      tournament_id: tournament.id,
-      sender_id: request.user.id,
-      expiry: expiry,
-      code: code,
-    },
-  });
-
-  // Create new token
-  await prismaClient.inviteToken.create({
-    data: {
       tournament_id: tournament.id,
       sender_id: request.user.id,
       expiry: expiry,
