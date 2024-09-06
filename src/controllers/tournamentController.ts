@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
-import ServerError from '../serverError';
+import ServerError from '../errors/serverError';
 import crypto from 'crypto';
+import { Tournament, User } from '@prisma/client';
 
 export async function createTournament(
   request: Request,
@@ -184,8 +185,7 @@ export async function joinTournament(
 
 export async function getUsersTournaments(
   request: Request,
-  response: Response,
-  next: NextFunction
+  response: Response
 ) {
   const userWithTournaments = await prismaClient.user.findFirst({
     where: {
@@ -273,11 +273,11 @@ export async function getTournamentInviteCode(
     );
   }
 
-  const expiry = new Date(
-    Date.now() + Number(process.env.INVITE_TOKEN_TIME_TO_LIVE_MILLIS)
+  const [code, expiry] = CreateInviteToken(
+    request.user,
+    tournament,
+    Number(process.env.INVITE_TOKEN_TIME_TO_LIVE_MILLIS)
   );
-  const string = `${tournament.id}${request.user.id}${expiry}`;
-  const code = crypto.createHash('sha256').update(string).digest('hex');
 
   await prismaClient.inviteToken.upsert({
     where: {
@@ -303,4 +303,15 @@ export async function getTournamentInviteCode(
     message: 'Generated invite token',
     data: code,
   });
+}
+
+export function CreateInviteToken(
+  user: User,
+  tournament: Tournament,
+  timeToLive: number
+): [string, Date] {
+  const expiry = new Date(Date.now() + timeToLive);
+  const string = `${tournament.id}${user.id}${expiry}`;
+  const code = crypto.createHash('sha256').update(string).digest('hex');
+  return [code, expiry];
 }

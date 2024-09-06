@@ -3,7 +3,7 @@ import prismaClient from '../prismaClient';
 import { Role, User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import ServerError from '../serverError';
+import ServerError from '../errors/serverError';
 
 export async function register(
   request: Request,

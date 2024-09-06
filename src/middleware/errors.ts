@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import ServerError from 'src/serverError';
+import ServerError from 'src/errors/serverError';
 
 export default async function errorHandler(
   error: ServerError,

@@ -1,10 +1,10 @@
+import { CreateInviteToken } from 'src/controllers/tournamentController';
 import {
   encryptPassword,
   getJwtTokenForUser,
 } from '../controllers/authController';
 import prismaClient from '../prismaClient';
-import { Role, Tournament, User } from '@prisma/client';
-import crypto from 'crypto';
+import { Bracket, Role, Tournament, User } from '@prisma/client';
 
 export async function createTestUser(
   nickname: string,
@@ -25,30 +25,64 @@ export async function createTestUser(
   return [user, token];
 }
 
-export async function createTournamentForUser(
-  user: User,
-  bracket_id?: number
-): Promise<Tournament> {
-  const updatedUser = await prismaClient.user.update({
-    where: { id: user.id },
-    data: { tournaments: { create: { bracket_id: bracket_id ?? 0 } } },
-    include: { tournaments: true },
+export async function createTestBracket(bracketName: string) {
+  return await prismaClient.bracket.create({
+    data: {
+      bracket_name: bracketName,
+    },
   });
-
-  const tournament = updatedUser.tournaments.find(
-    (tournament) => tournament.bracket_id === bracket_id
-  );
-  return tournament;
 }
 
-export async function getInviteCode(
+export async function userJoinTournament(
+  user: User,
+  tournament: Tournament
+): Promise<User> {
+  return await prismaClient.user.update({
+    where: { id: user.id },
+    data: { tournaments: { connect: { id: tournament.id } } },
+    include: { tournaments: true },
+  });
+}
+
+export async function createTestTournament(
+  bracket?: Bracket
+): Promise<[Tournament, Bracket]> {
+  if (!bracket) {
+    bracket = await prismaClient.bracket.create({
+      data: { bracket_name: 'test' },
+    });
+  }
+
+  const tournament = await prismaClient.tournament.create({
+    data: { bracket_id: bracket.id },
+  });
+  return [tournament, bracket];
+}
+
+export async function leaveTestTournament(
+  user: User,
+  tournamentId: number
+): Promise<void> {
+  await prismaClient.user.update({
+    where: {
+      id: user.id,
+    },
+    data: {
+      tournaments: {
+        disconnect: {
+          id: tournamentId,
+        },
+      },
+    },
+  });
+}
+
+export async function getTestInviteCode(
   user: User,
   tournament: Tournament,
   timeToLive: number
 ): Promise<string> {
-  const expiry = new Date(Date.now() + timeToLive);
-  const string = `${tournament.id}${user.id}${expiry}`;
-  const code = crypto.createHash('sha256').update(string).digest('hex');
+  const [code, expiry] = CreateInviteToken(user, tournament, timeToLive);
 
   await prismaClient.inviteToken.create({
     data: {

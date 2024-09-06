@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
-import ServerError from '../serverError';
+import ServerError from '../errors/serverError';
 import { BracketData, MatchupState } from '../bracketData';
 import { User } from '@prisma/client';
 
