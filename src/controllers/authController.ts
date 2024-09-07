@@ -3,7 +3,10 @@ import prismaClient from '../prismaClient';
 import { Role, User } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import ServerError from '../errors/serverError';
+import ServerError, {
+  BadRequestError,
+  UnauthorizedError,
+} from '../errors/serverError';
 
 export async function register(
   request: Request,
@@ -12,7 +15,7 @@ export async function register(
 ): Promise<void> {
   const { email, nickname, password } = request.body;
   if (!email || !nickname || !password) {
-    return next(new ServerError(400, 'Missing required information'));
+    throw new BadRequestError('Missing required information');
   }
 
   // Make sure email is unique
@@ -21,7 +24,7 @@ export async function register(
   });
 
   if (existingUser) {
-    return next(new ServerError(400, 'Email is already in use'));
+    throw new BadRequestError('Email is already in use');
   }
 
   const hashedPassword = await encryptPassword(password);
@@ -51,12 +54,12 @@ export async function login(
   });
 
   if (!user) {
-    return next(new ServerError(401, 'Incorrect email or password'));
+    throw new UnauthorizedError('Incorrect email or password');
   }
 
   const passwordMatch = await comparePasswords(user.password, password);
   if (!passwordMatch) {
-    return next(new ServerError(401, 'Incorrect email or password'));
+    throw new UnauthorizedError('Incorrect email or password');
   }
 
   sendLoginResponseWithToken(response, user);

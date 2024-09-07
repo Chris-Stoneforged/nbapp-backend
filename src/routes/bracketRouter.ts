@@ -6,17 +6,20 @@ import {
   makePrediction,
 } from '../controllers/bracketController';
 import { isUserAuthenticated } from '../middleware/auth';
+import errorSafe from '../errors/errorHandler';
 
 const router: Router = express.Router();
 router
   .route('/bracket/prediction/next')
-  .get(isUserAuthenticated, getNextPredictionToMake);
+  .get(errorSafe(isUserAuthenticated, getNextPredictionToMake));
 router
   .route('/bracket/prediction/make')
-  .post(isUserAuthenticated, makePrediction);
-router.route('/bracket/state').get(isUserAuthenticated, getBracketStateForUser);
+  .post(errorSafe(isUserAuthenticated, makePrediction));
+router
+  .route('/bracket/state')
+  .get(errorSafe(isUserAuthenticated, getBracketStateForUser));
 router
   .route('/bracket/available')
-  .get(isUserAuthenticated, getAvailableBrackets);
+  .get(errorSafe(isUserAuthenticated, getAvailableBrackets));
 
 export default router;

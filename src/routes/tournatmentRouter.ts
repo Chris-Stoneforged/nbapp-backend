@@ -8,19 +8,26 @@ import {
   leaveTournament,
 } from '../controllers/tournamentController';
 import { isUserAuthenticated } from '../middleware/auth';
+import errorSafe from '../errors/errorHandler';
 
 const router: Router = express.Router();
-router.route('/tournament/create').post(isUserAuthenticated, createTournament);
+router
+  .route('/tournament/create')
+  .post(errorSafe(isUserAuthenticated, createTournament));
 router
   .route('/tournament/join/:code')
-  .post(isUserAuthenticated, joinTournament);
-router.route('/tournament/leave').post(isUserAuthenticated, leaveTournament);
+  .post(errorSafe(isUserAuthenticated, joinTournament));
+router
+  .route('/tournament/leave')
+  .post(errorSafe(isUserAuthenticated, leaveTournament));
 router
   .route('/tournament/generate-invite-code')
-  .post(isUserAuthenticated, getTournamentInviteCode);
-router.route('/tournament/members').get(isUserAuthenticated, getTeamMembers);
+  .post(errorSafe(isUserAuthenticated, getTournamentInviteCode));
+router
+  .route('/tournament/members')
+  .get(errorSafe(isUserAuthenticated, getTeamMembers));
 router
   .route('/tournament/tournaments')
-  .get(isUserAuthenticated, getUsersTournaments);
+  .get(errorSafe(isUserAuthenticated, getUsersTournaments));
 
 export default router;

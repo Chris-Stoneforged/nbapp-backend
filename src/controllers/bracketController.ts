@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
-import ServerError from '../errors/serverError';
+import ServerError, { BadRequestError } from '../errors/serverError';
 import { BracketData, MatchupState } from '../bracketData';
 import { User } from '@prisma/client';
 
@@ -14,7 +14,7 @@ export async function udpateBracket(
   // TODO: Introduce validation for correct number of rounds, no dead ends, valid number of matchups, etc.
   const bracketData = request.body.bracketJson as BracketData;
   if (!bracketData) {
-    return next(new ServerError(400, 'error parsing bracket JSON.'));
+    throw new BadRequestError('error parsing bracket JSON.');
   }
 
   const bracket = await prismaClient.bracket.upsert({
@@ -177,9 +177,7 @@ export async function makePrediction(
     where: { id: request.body.bracketId },
   });
   if (!bracket) {
-    return next(
-      new ServerError(500, 'Cannot make prediction - Invalid bracket id')
-    );
+    throw new BadRequestError('Cannot make prediction - Invalid bracket id');
   }
 
   const userPredictions = await prismaClient.prediction.findMany({
@@ -190,18 +188,18 @@ export async function makePrediction(
   if (
     userPredictions.some((prediction) => prediction.matchup_id === matchupId)
   ) {
-    return next(new ServerError(400, 'Already made prediction for match up'));
+    throw new BadRequestError('Already made prediction for match up');
   }
 
   const predictedMatchup = await prismaClient.matchup.findFirst({
     where: { id: matchupId },
   });
   if (!predictedMatchup) {
-    return next(new ServerError(400, 'Invalid prediction Id'));
+    throw new BadRequestError('Invalid prediction Id');
   }
 
   if (predictedMatchup.winner) {
-    return next(new ServerError(400, 'Matchup is already decided'));
+    throw new BadRequestError('Matchup is already decided');
   }
 
   if (
@@ -209,9 +207,7 @@ export async function makePrediction(
     predictedWinner !== predictedMatchup.team_a &&
     predictedWinner !== predictedMatchup.team_b
   ) {
-    return next(
-      new ServerError(400, 'Invalid prediction - invalid winner picked')
-    );
+    throw new BadRequestError('Invalid prediction - invalid winner picked');
   }
 
   if (predictedMatchup.round > 1) {
@@ -220,11 +216,8 @@ export async function makePrediction(
     );
 
     if (parentPredictions.length !== 2) {
-      return next(
-        new ServerError(
-          400,
-          'Invalid prediction - previous predictions not made'
-        )
+      throw new BadRequestError(
+        'Invalid prediction - previous predictions not made'
       );
     }
 
@@ -232,9 +225,7 @@ export async function makePrediction(
       predictedWinner !== parentPredictions[0].winner &&
       predictedWinner !== parentPredictions[1].winner
     ) {
-      return next(
-        new ServerError(400, 'Invalid prediction - invalid winner picked')
-      );
+      throw new BadRequestError('Invalid prediction - invalid winner picked');
     }
   }
 
@@ -275,14 +266,16 @@ export async function getBracketStateForUser(
         });
 
   if (!user) {
-    return next(new ServerError(400, 'Cannot retrieve state - Invalid user'));
+    throw new BadRequestError('Cannot retrieve state - Invalid user');
   }
 
   const bracket = await prismaClient.bracket.findFirst({
     where: { id: request.body.bracketId },
   });
   if (!bracket) {
-    return next(new ServerError(500, 'Cannot retrieve state - No bracket set'));
+    throw new BadRequestError(
+      `Cannot retrieve state - No bracket with id ${request.body.bracketId} set`
+    );
   }
 
   const [matchupData, finalsMatchupId] = await getBracketStateResponse(

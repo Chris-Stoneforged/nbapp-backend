@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import prismaClient from '../prismaClient';
-import ServerError from '../errors/serverError';
+import ServerError, {
+  ForbiddenError,
+  UnauthorizedError,
+} from '../errors/serverError';
 import { Role } from '@prisma/client';
 
 export async function isUserAuthenticated(
@@ -18,19 +21,19 @@ export async function isUserAuthenticated(
   }
 
   if (!token) {
-    return next(new ServerError(401, 'User is not authorized'));
+    throw new UnauthorizedError('User is not authorized');
   }
 
   let payload: JwtPayload;
   try {
     payload = jwt.verify(token, process.env.JWT_SECRET) as JwtPayload;
   } catch (e) {
-    return next(new ServerError(401, `Error verifying token - ${e.message}`));
+    throw new UnauthorizedError(`Error verifying token - ${e.message}`);
   }
 
   const user = await prismaClient.user.findFirst({ where: { id: payload.id } });
   if (!user) {
-    return next(new ServerError(401, 'Invalid token'));
+    throw new UnauthorizedError('Invalid token');
   }
 
   request.user = user;
@@ -43,7 +46,7 @@ export async function isAdmin(
   next: NextFunction
 ) {
   if (request.user.role !== Role.Admin) {
-    return next(new ServerError(403, 'Access denied'));
+    throw new ForbiddenError('Access denied');
   }
 
   next();

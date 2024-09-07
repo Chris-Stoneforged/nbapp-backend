@@ -1,17 +1,19 @@
 import { NextFunction, Request, Response } from 'express';
-import ServerError from 'src/errors/serverError';
+import ServerError from '../errors/serverError';
 
 export default async function errorHandler(
-  error: ServerError,
-  _request: Request,
+  error: Error,
+  request: Request,
   response: Response,
   next: NextFunction
 ) {
-  const statusCode = error.statusCode || 500;
-  const message = error.message || 'Internal Server Error';
+  let statusCode = 500;
+  if (error instanceof ServerError) {
+    statusCode = error.statusCode;
+  }
 
   response.status(statusCode).json({
     success: false,
-    message: message,
+    message: error.message,
   });
 }

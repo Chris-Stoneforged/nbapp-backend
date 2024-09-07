@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
-import ServerError from '../errors/serverError';
+import ServerError, { BadRequestError } from '../errors/serverError';
 import crypto from 'crypto';
 import { Tournament, User } from '@prisma/client';
 
@@ -14,9 +14,7 @@ export async function createTournament(
   });
 
   if (!bracket) {
-    return next(
-      new ServerError(400, 'Cannot create tournament, invalid bracket')
-    );
+    throw new BadRequestError('Cannot create tournament, invalid bracket');
   }
 
   const existingTournament = await prismaClient.tournament.findFirst({
@@ -31,8 +29,8 @@ export async function createTournament(
   });
 
   if (existingTournament) {
-    return next(
-      new ServerError(400, 'User is already in a tournament for this bracket')
+    throw new BadRequestError(
+      'User is already in a tournament for this bracket'
     );
   }
 
@@ -83,9 +81,7 @@ export async function leaveTournament(
     !tournament ||
     !tournament.users.some((user) => user.id === request.user.id)
   ) {
-    return next(
-      new ServerError(400, 'Could not find tournament with specified Id')
-    );
+    throw new BadRequestError('Could not find tournament with specified Id');
   }
 
   await prismaClient.user.update({
@@ -130,7 +126,7 @@ export async function joinTournament(
   });
 
   if (!inviteToken) {
-    return next(new ServerError(400, 'Invalid invite code'));
+    throw new BadRequestError('Invalid invite code');
   }
 
   if (inviteToken.expiry <= new Date(Date.now())) {
@@ -142,7 +138,7 @@ export async function joinTournament(
         },
       },
     });
-    return next(new ServerError(400, 'Invite code expired!'));
+    throw new BadRequestError('Invite code expired!');
   }
 
   const tournament = await prismaClient.tournament.findFirst({
@@ -153,11 +149,11 @@ export async function joinTournament(
   });
 
   if (!tournament) {
-    return next(new ServerError(400, 'Invalid invite code'));
+    throw new BadRequestError('Invalid invite code');
   }
 
   if (tournament.users.some((user) => user.id === request.user.id)) {
-    return next(new ServerError(400, 'User is already in this team'));
+    throw new BadRequestError('User is already in this team');
   }
 
   await prismaClient.user.update({
@@ -231,11 +227,8 @@ export async function getTeamMembers(
     !tournament ||
     !tournament.users.some((user) => user.id === request.user.id)
   ) {
-    return next(
-      new ServerError(
-        400,
-        `User is not in tournament with id ${request.body.tournamentId}`
-      )
+    throw new BadRequestError(
+      `User is not in tournament with id ${request.body.tournamentId}`
     );
   }
 
@@ -265,11 +258,8 @@ export async function getTournamentInviteCode(
     !tournament ||
     !tournament.users.some((user) => user.id === request.user.id)
   ) {
-    return next(
-      new ServerError(
-        400,
-        `User is not in tournament with id ${request.body.tournamentId}`
-      )
+    throw new BadRequestError(
+      `User is not in tournament with id ${request.body.tournamentId}`
     );
   }
 
