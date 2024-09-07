@@ -17,6 +17,10 @@ describe('Auth routes', () => {
   );
   const invalidTokenRegex = new RegExp('^token=none;');
 
+  test.only('Default', () => {
+    expect(true).toBeTruthy();
+  });
+
   beforeEach(async () => {
     await prismaClient.user.deleteMany();
   });

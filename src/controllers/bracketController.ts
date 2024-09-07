@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
-import ServerError, { BadRequestError } from '../errors/serverError';
+import { BadRequestError } from '../errors/serverError';
 import { BracketData, MatchupState } from '../bracketData';
 import { User } from '@prisma/client';
+import validateBracketJson from 'src/utils/bracketValidator';
 
 // Admin route
 export async function udpateBracket(
@@ -10,11 +11,13 @@ export async function udpateBracket(
   response: Response,
   next: NextFunction
 ): Promise<void> {
-  // TODO - validate this cast (using zod?)
-  // TODO: Introduce validation for correct number of rounds, no dead ends, valid number of matchups, etc.
   const bracketData = request.body.bracketJson as BracketData;
   if (!bracketData) {
-    throw new BadRequestError('error parsing bracket JSON.');
+    throw new BadRequestError('Error parsing bracket JSON.');
+  }
+
+  if (!validateBracketJson(bracketData)) {
+    throw new BadRequestError('Bad bracket data.');
   }
 
   const bracket = await prismaClient.bracket.upsert({

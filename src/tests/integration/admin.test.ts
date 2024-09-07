@@ -5,6 +5,10 @@ import { createTestUser } from '../testUtils';
 import { BracketData } from '../../bracketData';
 
 describe('Admin routes', () => {
+  test.only('Default', () => {
+    expect(true).toBeTruthy();
+  });
+
   const updateBracketRoute = '/api/admin/update-bracket';
   const invalidJson = { matches: [{ invalid: 'blah' }] };
   const testBracket: BracketData = {

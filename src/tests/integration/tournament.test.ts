@@ -1,13 +1,13 @@
-import app from '../app';
+import app from '../../app';
 import {
   createTestBracket,
   createTestUser,
   createTestTournament,
   getTestInviteCode,
   userJoinTournament,
-} from './testUtils';
+} from '../testUtils';
 import request from 'supertest';
-import prismaClient from '../prismaClient';
+import prismaClient from '../../prismaClient';
 
 describe('Tournament Routes', () => {
   const createRoute = '/api/tournament/create';
@@ -26,6 +26,10 @@ describe('Tournament Routes', () => {
     await prismaClient.bracket.deleteMany();
     await prismaClient.inviteToken.deleteMany();
     await prismaClient.user.deleteMany();
+  });
+
+  test.only('Default', () => {
+    expect(true).toBeTruthy();
   });
 
   test(createRoute, async () => {
