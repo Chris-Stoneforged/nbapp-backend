@@ -1,8 +1,8 @@
 import request from 'supertest';
-import app from '../app';
-import prismaClient from '../prismaClient';
-import { createTestUser } from './testUtils';
-import { BracketData } from '../bracketData';
+import app from '../../app';
+import prismaClient from '../../prismaClient';
+import { createTestUser } from '../testUtils';
+import { BracketData } from '../../bracketData';
 
 describe('Admin routes', () => {
   const updateBracketRoute = '/api/admin/update-bracket';

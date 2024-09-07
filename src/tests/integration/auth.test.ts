@@ -1,7 +1,7 @@
 import request from 'supertest';
-import app from '../app';
-import prismaClient from '../prismaClient';
-import { createTestUser } from './testUtils';
+import app from '../../app';
+import prismaClient from '../../prismaClient';
+import { createTestUser } from '../testUtils';
 
 describe('Auth routes', () => {
   const registerRoute = '/api/register';
