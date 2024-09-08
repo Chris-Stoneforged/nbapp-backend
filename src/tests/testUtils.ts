@@ -4,20 +4,22 @@ import {
   getJwtTokenForUser,
 } from '../controllers/authController';
 import prismaClient from '../prismaClient';
-import { Bracket, Role, Tournament, User } from '@prisma/client';
+import { Bracket, Tournament, User } from '@prisma/client';
 
 export async function createTestUser(
-  nickname: string,
-  email: string,
-  password: string,
-  role: Role = 'User'
+  password?: string
 ): Promise<[User, string]> {
+  const seed = new Date(Date.now()).getMilliseconds().toString();
+  const email = `${seed}@gmail.com`;
+  password = password || seed;
+  const nickname = seed;
+
   const hashedPassword = await encryptPassword(password);
   const user: User = await prismaClient.user.create({
     data: {
       email: email,
       nickname: nickname,
-      role: role,
+      role: 'User',
       password: hashedPassword,
     },
   });

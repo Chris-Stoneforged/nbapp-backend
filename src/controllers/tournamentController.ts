@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import prismaClient from '../prismaClient';
-import ServerError, { BadRequestError } from '../errors/serverError';
+import { BadRequestError } from '../errors/serverError';
 import crypto from 'crypto';
 import { Tournament, User } from '@prisma/client';
 
@@ -110,6 +110,59 @@ export async function leaveTournament(
   response.status(200).json({
     success: true,
     message: 'Successfully left tournaments',
+  });
+}
+
+export async function getInviteCodeInfo(
+  request: Request,
+  response: Response,
+  next: NextFunction
+) {
+  const code = request.params.code;
+  const inviteToken = await prismaClient.inviteToken.findFirst({
+    where: {
+      code: code,
+    },
+  });
+
+  if (!inviteToken) {
+    throw new BadRequestError('Invalid invite code');
+  }
+
+  if (inviteToken.expiry <= new Date(Date.now())) {
+    await prismaClient.inviteToken.delete({
+      where: {
+        id: {
+          sender_id: inviteToken.sender_id,
+          tournament_id: inviteToken.tournament_id,
+        },
+      },
+    });
+    throw new BadRequestError('Invite code expired!');
+  }
+
+  const tournament = await prismaClient.tournament.findFirst({
+    where: {
+      id: inviteToken.tournament_id,
+    },
+    include: { users: true, bracket: true },
+  });
+
+  if (!tournament) {
+    throw new BadRequestError('Invalid invite code');
+  }
+
+  if (tournament.users.some((user) => user.id === request.user.id)) {
+    throw new BadRequestError('User is already in this team');
+  }
+
+  response.status(200).json({
+    success: true,
+    data: {
+      code: code,
+      sender: inviteToken.sender_id,
+      bracketName: tournament.bracket.bracket_name,
+    },
   });
 }
 

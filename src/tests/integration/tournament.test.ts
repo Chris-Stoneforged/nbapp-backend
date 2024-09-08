@@ -16,24 +16,17 @@ describe('Tournament Routes', () => {
   const joinRoute = '/api/tournament/join';
   const membersRoute = '/api/tournament/members';
   const tournamentsRoute = '/api/tournament/tournaments';
-
-  const nickname = 'test';
-  const email = 'test@gmail.com';
-  const password = 'test';
+  const inviteRotue = '/api/tournament/invite';
 
   beforeEach(async () => {
-    await prismaClient.tournament.deleteMany();
     await prismaClient.bracket.deleteMany();
+    await prismaClient.tournament.deleteMany();
     await prismaClient.inviteToken.deleteMany();
     await prismaClient.user.deleteMany();
   });
 
-  test.only('Default', () => {
-    expect(true).toBeTruthy();
-  });
-
   test(createRoute, async () => {
-    const [user, token] = await createTestUser(nickname, email, password);
+    const [user, token] = await createTestUser();
 
     // Invalid bracket id
     let response = await request(app)
@@ -98,7 +91,7 @@ describe('Tournament Routes', () => {
   });
 
   test(leaveRoute, async () => {
-    const [user, token] = await createTestUser(nickname, email, password);
+    const [user, token] = await createTestUser();
     const [tournament] = await createTestTournament();
 
     let response = await request(app)
@@ -131,7 +124,7 @@ describe('Tournament Routes', () => {
   });
 
   test(getCodeRoute, async () => {
-    const [user, token] = await createTestUser(nickname, email, password);
+    const [user, token] = await createTestUser();
     const [tournament] = await createTestTournament();
 
     let response = await request(app)
@@ -169,7 +162,7 @@ describe('Tournament Routes', () => {
   });
 
   test(joinRoute, async () => {
-    const [user, token] = await createTestUser(nickname, email, password);
+    const [user, token] = await createTestUser();
 
     // Invalid invite code
     let response = await request(app)
@@ -178,11 +171,7 @@ describe('Tournament Routes', () => {
 
     expect(response.statusCode).toBe(400);
 
-    const [sender] = await createTestUser(
-      'sender',
-      'sender@gmail.com',
-      'sender'
-    );
+    const [sender] = await createTestUser();
     const [tournament, bracket] = await createTestTournament();
     await userJoinTournament(sender, tournament);
     let inviteCode = await getTestInviteCode(sender, tournament, 0);
@@ -226,7 +215,7 @@ describe('Tournament Routes', () => {
   });
 
   test(membersRoute, async () => {
-    const [user, token] = await createTestUser(nickname, email, password);
+    const [user, token] = await createTestUser();
     const [tournament] = await createTestTournament();
 
     let response = await request(app)
@@ -257,16 +246,8 @@ describe('Tournament Routes', () => {
       },
     ]);
 
-    const [member1] = await createTestUser(
-      'member1',
-      'member1@gmail.com',
-      'member1'
-    );
-    const [member2] = await createTestUser(
-      'member2',
-      'member2@gmail.com',
-      'member2'
-    );
+    const [member1] = await createTestUser();
+    const [member2] = await createTestUser();
 
     await userJoinTournament(member1, tournament);
     await userJoinTournament(member2, tournament);
@@ -294,7 +275,7 @@ describe('Tournament Routes', () => {
   });
 
   test(tournamentsRoute, async () => {
-    const [user, token] = await createTestUser(nickname, email, password);
+    const [user, token] = await createTestUser();
 
     let response = await request(app)
       .get(tournamentsRoute)
@@ -342,5 +323,51 @@ describe('Tournament Routes', () => {
         bracketName: bracket2.bracket_name,
       },
     ]);
+  });
+
+  test(inviteRotue, async () => {
+    const [user, token] = await createTestUser();
+
+    // Invalid invite code
+    let response = await request(app)
+      .get(`${inviteRotue}/invalid_code`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(400);
+
+    const [sender] = await createTestUser();
+    const [tournament, bracket] = await createTestTournament();
+    await userJoinTournament(sender, tournament);
+    let inviteCode = await getTestInviteCode(sender, tournament, 0);
+
+    // Expired invite code
+    response = await request(app)
+      .get(`${inviteRotue}/${inviteCode}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(400);
+
+    // Valid invite code
+    inviteCode = await getTestInviteCode(sender, tournament, 5000);
+    response = await request(app)
+      .get(`${inviteRotue}/${inviteCode}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty('data');
+    expect(response.body.data).toEqual({
+      code: inviteCode,
+      sender: sender.id,
+      bracketName: bracket.bracket_name,
+    });
+
+    await userJoinTournament(user, tournament);
+
+    // Already in team
+    response = await request(app)
+      .get(`${inviteRotue}/${inviteCode}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(400);
   });
 });

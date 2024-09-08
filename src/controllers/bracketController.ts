@@ -3,7 +3,7 @@ import prismaClient from '../prismaClient';
 import { BadRequestError } from '../errors/serverError';
 import { BracketData, MatchupState } from '../bracketData';
 import { User } from '@prisma/client';
-import validateBracketJson from 'src/utils/bracketValidator';
+import validateBracketJson from '../utils/bracketValidator';
 
 // Admin route
 export async function udpateBracket(
