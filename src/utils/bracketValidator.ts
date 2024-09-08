@@ -32,24 +32,48 @@ export default function validateBracketJson(
       }
       teamSet.add(matchUp.team_b);
     }
+
     roundTeams.set(matchUp.round, teamSet);
     roundCounts.set(matchUp.round, (roundCounts.get(matchUp.round) || 0) + 1);
 
+    const nextMatchup = bracketData.matchups.find(
+      (m) => m.id === matchUp.advances_to
+    );
+
+    // Check advance_to is set correctly
     if (matchUp.advances_to) {
       advancesTos.set(
         matchUp.advances_to,
         (advancesTos.get(matchUp.advances_to) || 0) + 1
       );
 
-      const nextMatchup = bracketData.matchups.find(
-        (m) => m.id === matchUp.advances_to
-      );
       if (!nextMatchup) {
         return [false, 'Invalid advance_tos'];
       }
 
       if (nextMatchup.round !== matchUp.round + 1) {
         return [false, 'Invalid advance_tos'];
+      }
+    }
+
+    // Check winners are valid
+    if (matchUp.winner) {
+      if (!matchUp.team_a || !matchUp.team_b) {
+        return [false, 'Winner specified but both teams are not set'];
+      }
+
+      if (
+        matchUp.winner !== matchUp.team_a &&
+        matchUp.winner !== matchUp.team_b
+      ) {
+        return [false, 'Winner is not either of the two set teams'];
+      }
+
+      if (
+        matchUp.winner !== nextMatchup.team_a &&
+        matchUp.winner !== nextMatchup.team_b
+      ) {
+        return [false, 'Winner specified, but does not appear in next round'];
       }
     }
 
@@ -63,6 +87,7 @@ export default function validateBracketJson(
     return [false, 'Matchup Ids are not unique'];
   }
 
+  // Correct number of matchups
   let numberOfMatchups = roundCounts.get(highestRound);
   if (numberOfMatchups !== 1) {
     return [false, 'More than one final matchup'];
@@ -75,7 +100,6 @@ export default function validateBracketJson(
     return [false, 'Final matchup has an advance_to set'];
   }
 
-  // Has correct number of matchups
   for (let i = highestRound - 1; i > 0; i--) {
     const matchupCount = roundCounts.get(i);
     if (matchupCount !== numberOfMatchups * 2) {
@@ -86,7 +110,7 @@ export default function validateBracketJson(
 
   // exactly 2 of each 'advances to' for each round
   let validAdvanceTos = true;
-  advancesTos.forEach((value, key) => {
+  advancesTos.forEach((value) => {
     if (value !== 2) {
       validAdvanceTos = false;
     }
@@ -95,8 +119,6 @@ export default function validateBracketJson(
   if (!validAdvanceTos) {
     return [false, 'Invalid advance_tos'];
   }
-
-  // each 'advances to' is in the next round
 
   return [true, 'Valid bracket'];
 }

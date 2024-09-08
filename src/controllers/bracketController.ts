@@ -16,8 +16,9 @@ export async function udpateBracket(
     throw new BadRequestError('Error parsing bracket JSON.');
   }
 
-  if (!validateBracketJson(bracketData)) {
-    throw new BadRequestError('Bad bracket data.');
+  const [isValid, message] = validateBracketJson(bracketData);
+  if (!isValid) {
+    throw new BadRequestError(`Bad bracket data - ${message}`);
   }
 
   const bracket = await prismaClient.bracket.upsert({
