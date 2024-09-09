@@ -76,3 +76,8 @@ model Prediction {
   matchup         Matchup       @relation(fields: [matchup_id, bracket_id], references: [id, bracket_id])
   winner          String
 }
+
+model ScoreValue {
+  id              String        @unique
+  score           Int
+}
