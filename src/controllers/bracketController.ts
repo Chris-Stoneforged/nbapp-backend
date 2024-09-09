@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import prismaClient from '../prismaClient';
 import { BadRequestError } from '../errors/serverError';
 import { BracketData, MatchupState } from '../bracketData';
@@ -8,8 +8,7 @@ import validateBracketJson from '../utils/bracketValidator';
 // Admin route
 export async function udpateBracket(
   request: Request,
-  response: Response,
-  next: NextFunction
+  response: Response
 ): Promise<void> {
   const bracketData = request.body.bracketJson as BracketData;
   if (!bracketData) {
@@ -169,11 +168,7 @@ export async function getNextPredictionToMake(
   return;
 }
 
-export async function makePrediction(
-  request: Request,
-  response: Response,
-  next: NextFunction
-) {
+export async function makePrediction(request: Request, response: Response) {
   const matchupId: number = request.body.matchup;
   const predictedWinner = request.body.predictedWinner;
 
@@ -259,8 +254,7 @@ export async function makePrediction(
 
 export async function getBracketStateForUser(
   request: Request,
-  response: Response,
-  next: NextFunction
+  response: Response
 ) {
   const user: User =
     request.body.user_id === undefined

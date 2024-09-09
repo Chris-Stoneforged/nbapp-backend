@@ -1,10 +1,7 @@
-import { CreateInviteToken } from 'src/controllers/tournamentController';
-import {
-  encryptPassword,
-  getJwtTokenForUser,
-} from '../controllers/authController';
 import prismaClient from '../prismaClient';
+import { encryptPassword, getJwtTokenForUser } from '../utils/authUtils';
 import { Bracket, Tournament, User } from '@prisma/client';
+import { createInviteToken } from '../utils/utils';
 
 export async function createTestUser(
   password?: string
@@ -84,7 +81,7 @@ export async function getTestInviteCode(
   tournament: Tournament,
   timeToLive: number
 ): Promise<string> {
-  const [code, expiry] = CreateInviteToken(user, tournament, timeToLive);
+  const [code, expiry] = createInviteToken(user, tournament, timeToLive);
 
   await prismaClient.inviteToken.create({
     data: {

@@ -1,14 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import prismaClient from '../prismaClient';
 import { BadRequestError } from '../errors/serverError';
-import crypto from 'crypto';
-import { Tournament, User } from '@prisma/client';
+import { createInviteToken } from '../utils/utils';
 
-export async function createTournament(
-  request: Request,
-  response: Response,
-  next: NextFunction
-) {
+export async function createTournament(request: Request, response: Response) {
   const bracket = await prismaClient.bracket.findFirst({
     where: { id: request.body.bracketId },
   });
@@ -63,11 +58,7 @@ export async function createTournament(
   });
 }
 
-export async function leaveTournament(
-  request: Request,
-  response: Response,
-  next: NextFunction
-) {
+export async function leaveTournament(request: Request, response: Response) {
   const tournament = await prismaClient.tournament.findFirst({
     where: {
       id: request.body.tournamentId ?? 0,
@@ -97,7 +88,6 @@ export async function leaveTournament(
     },
   });
 
-  // If no users remain in the tournament, delete it
   await prismaClient.tournament.delete({
     where: {
       id: tournament.id,
@@ -113,11 +103,7 @@ export async function leaveTournament(
   });
 }
 
-export async function getInviteCodeInfo(
-  request: Request,
-  response: Response,
-  next: NextFunction
-) {
+export async function getInviteCodeInfo(request: Request, response: Response) {
   const code = request.params.code;
   const inviteToken = await prismaClient.inviteToken.findFirst({
     where: {
@@ -166,11 +152,7 @@ export async function getInviteCodeInfo(
   });
 }
 
-export async function joinTournament(
-  request: Request,
-  response: Response,
-  next: NextFunction
-) {
+export async function joinTournament(request: Request, response: Response) {
   const code = request.params.code;
   const inviteToken = await prismaClient.inviteToken.findFirst({
     where: {
@@ -262,11 +244,7 @@ export async function getUsersTournaments(
   });
 }
 
-export async function getTeamMembers(
-  request: Request,
-  response: Response,
-  next: NextFunction
-) {
+export async function getTeamMembers(request: Request, response: Response) {
   const tournament = await prismaClient.tournament.findFirst({
     where: {
       id: request.body.tournamentId,
@@ -297,8 +275,7 @@ export async function getTeamMembers(
 
 export async function getTournamentInviteCode(
   request: Request,
-  response: Response,
-  next: NextFunction
+  response: Response
 ) {
   const tournament = await prismaClient.tournament.findFirst({
     where: { id: request.body.tournamentId ?? 0 },
@@ -316,7 +293,7 @@ export async function getTournamentInviteCode(
     );
   }
 
-  const [code, expiry] = CreateInviteToken(
+  const [code, expiry] = createInviteToken(
     request.user,
     tournament,
     Number(process.env.INVITE_TOKEN_TIME_TO_LIVE_MILLIS)
@@ -346,15 +323,4 @@ export async function getTournamentInviteCode(
     message: 'Generated invite token',
     data: code,
   });
-}
-
-export function CreateInviteToken(
-  user: User,
-  tournament: Tournament,
-  timeToLive: number
-): [string, Date] {
-  const expiry = new Date(Date.now() + timeToLive);
-  const string = `${tournament.id}${user.id}${expiry}`;
-  const code = crypto.createHash('sha256').update(string).digest('hex');
-  return [code, expiry];
 }

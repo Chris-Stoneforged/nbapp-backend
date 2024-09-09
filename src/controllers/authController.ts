@@ -1,24 +1,22 @@
-import { NextFunction, Request, Response } from 'express';
 import prismaClient from '../prismaClient';
+import { Request, Response } from 'express';
 import { Role, User } from '@prisma/client';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import ServerError, {
-  BadRequestError,
-  UnauthorizedError,
-} from '../errors/serverError';
+import { BadRequestError, UnauthorizedError } from '../errors/serverError';
+import {
+  comparePasswords,
+  encryptPassword,
+  getCookieData,
+} from '../utils/authUtils';
 
 export async function register(
   request: Request,
-  response: Response,
-  next: NextFunction
+  response: Response
 ): Promise<void> {
   const { email, nickname, password } = request.body;
   if (!email || !nickname || !password) {
     throw new BadRequestError('Missing required information');
   }
 
-  // Make sure email is unique
   const existingUser = await prismaClient.user.findFirst({
     where: { email: email },
   });
@@ -28,8 +26,6 @@ export async function register(
   }
 
   const hashedPassword = await encryptPassword(password);
-
-  // Create new user
   const user: User = await prismaClient.user.create({
     data: {
       email: email,
@@ -39,13 +35,16 @@ export async function register(
     },
   });
 
-  sendLoginResponseWithToken(response, user);
+  const [token, options] = getCookieData(user);
+  response.status(200).cookie('token', token, options).json({
+    success: true,
+    token: token,
+  });
 }
 
 export async function login(
   request: Request,
-  response: Response,
-  next: NextFunction
+  response: Response
 ): Promise<void> {
   const { email, password } = request.body;
 
@@ -62,7 +61,11 @@ export async function login(
     throw new UnauthorizedError('Incorrect email or password');
   }
 
-  sendLoginResponseWithToken(response, user);
+  const [token, options] = getCookieData(user);
+  response.status(200).cookie('token', token, options).json({
+    success: true,
+    token: token,
+  });
 }
 
 export async function logout(
@@ -79,39 +82,4 @@ export async function logout(
       success: true,
       message: 'Successfully logged out',
     });
-}
-
-async function comparePasswords(
-  userPassword: string,
-  loginPassword: string
-): Promise<boolean> {
-  return await bcrypt.compare(loginPassword, userPassword);
-}
-
-export async function encryptPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10);
-  const hash = await bcrypt.hash(password, salt);
-  return hash;
-}
-
-export function getJwtTokenForUser(user: User): string {
-  return jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_TIME_TO_LIVE,
-  });
-}
-
-function sendLoginResponseWithToken(response: Response, user: User) {
-  const token = getJwtTokenForUser(user);
-  const options = {
-    expires: new Date(
-      Date.now() + Number(process.env.COOKIE_TIME_TO_LIVE) * 24 * 60 * 60 * 1000
-    ),
-    httpOnly: true,
-    secure: true,
-  };
-
-  response.status(200).cookie('token', token, options).json({
-    success: true,
-    token: token,
-  });
 }
