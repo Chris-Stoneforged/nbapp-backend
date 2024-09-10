@@ -2,7 +2,7 @@ import express, { Router } from 'express';
 import {
   createTournament,
   getInviteCodeInfo,
-  getTeamMembers,
+  getTournamentDetails,
   getTournamentInviteCode,
   getUsersTournaments,
   joinTournament,
@@ -19,16 +19,16 @@ router
   .route('/tournament/join/:code')
   .post(errorSafe(isUserAuthenticated, joinTournament));
 router
-  .route('/tournament/leave')
+  .route('/tournament/leave/:id')
   .post(errorSafe(isUserAuthenticated, leaveTournament));
 router
-  .route('/tournament/generate-invite-code')
+  .route('/tournament/generate-invite-code/:id')
   .post(errorSafe(isUserAuthenticated, getTournamentInviteCode));
 router
-  .route('/tournament/members')
-  .get(errorSafe(isUserAuthenticated, getTeamMembers));
+  .route('/tournament/:id')
+  .get(errorSafe(isUserAuthenticated, getTournamentDetails));
 router
-  .route('/tournament/tournaments')
+  .route('/tournaments')
   .get(errorSafe(isUserAuthenticated, getUsersTournaments));
 router
   .route('/tournament/invite/:code')

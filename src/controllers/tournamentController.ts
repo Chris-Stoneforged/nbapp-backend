@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prismaClient from '../prismaClient';
 import { BadRequestError } from '../errors/serverError';
 import { createInviteToken } from '../utils/utils';
+import { calculateUserScore } from '../utils/scoreCalculator';
 
 export async function createTournament(request: Request, response: Response) {
   const bracket = await prismaClient.bracket.findFirst({
@@ -48,20 +49,34 @@ export async function createTournament(request: Request, response: Response) {
     },
   });
 
+  const memberData = [
+    {
+      id: request.user.id,
+      nickname: request.user.nickname,
+      score: 0,
+    },
+  ];
+
   response.status(200).json({
     success: true,
     message: 'Successfully created tournament',
     data: {
       tournamentId: tournament.id,
       bracketName: bracket.bracket_name,
+      memberData: memberData,
     },
   });
 }
 
 export async function leaveTournament(request: Request, response: Response) {
+  const tournamentId = Number.parseInt(request.params.id);
+  if (Number.isNaN(tournamentId)) {
+    throw new BadRequestError('Invalid tournament Id');
+  }
+
   const tournament = await prismaClient.tournament.findFirst({
     where: {
-      id: request.body.tournamentId ?? 0,
+      id: tournamentId,
     },
     include: {
       users: true,
@@ -180,7 +195,14 @@ export async function joinTournament(request: Request, response: Response) {
     where: {
       id: inviteToken.tournament_id,
     },
-    include: { users: true, bracket: true },
+    include: {
+      users: {
+        include: {
+          predictions: true,
+        },
+      },
+      bracket: true,
+    },
   });
 
   if (!tournament) {
@@ -204,12 +226,24 @@ export async function joinTournament(request: Request, response: Response) {
     },
   });
 
+  const memberData = tournament.users.map((member) => {
+    const userScore = calculateUserScore(member);
+    return { id: member.id, nickname: member.nickname, score: userScore };
+  });
+
+  memberData.push({
+    id: request.user.id,
+    nickname: request.user.nickname,
+    score: 0,
+  });
+
   response.status(200).json({
     success: true,
     message: 'Successfully joined team',
     data: {
       tournamentId: tournament.id,
       bracketName: tournament.bracket.bracket_name,
+      memberData: memberData,
     },
   });
 }
@@ -244,13 +278,22 @@ export async function getUsersTournaments(
   });
 }
 
-export async function getTeamMembers(request: Request, response: Response) {
+export async function getTournamentDetails(
+  request: Request,
+  response: Response
+) {
+  const tournamentId = Number.parseInt(request.params.id);
+  if (Number.isNaN(tournamentId)) {
+    throw new BadRequestError('Invalid tournament Id');
+  }
+
   const tournament = await prismaClient.tournament.findFirst({
     where: {
-      id: request.body.tournamentId,
+      id: tournamentId,
     },
     include: {
       users: true,
+      bracket: true,
     },
   });
 
@@ -264,12 +307,17 @@ export async function getTeamMembers(request: Request, response: Response) {
   }
 
   const memberData = tournament.users.map((member) => {
-    return { id: member.id, nickname: member.nickname };
+    const userScore = calculateUserScore(member);
+    return { id: member.id, nickname: member.nickname, score: userScore };
   });
 
   response.status(200).json({
     success: true,
-    data: memberData,
+    data: {
+      tournamentId: tournament.id,
+      bracketName: tournament.bracket.bracket_name,
+      memberData: memberData,
+    },
   });
 }
 
@@ -277,8 +325,13 @@ export async function getTournamentInviteCode(
   request: Request,
   response: Response
 ) {
+  const tournamentId = Number.parseInt(request.params.id);
+  if (Number.isNaN(tournamentId)) {
+    throw new BadRequestError('Invalid tournament Id');
+  }
+
   const tournament = await prismaClient.tournament.findFirst({
-    where: { id: request.body.tournamentId ?? 0 },
+    where: { id: tournamentId },
     include: {
       users: true,
     },
