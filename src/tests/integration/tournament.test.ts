@@ -14,8 +14,8 @@ describe('Tournament Routes', () => {
   const leaveRoute = '/api/tournament/leave';
   const getCodeRoute = '/api/tournament/generate-invite-code';
   const joinRoute = '/api/tournament/join';
-  const membersRoute = '/api/tournament/members';
-  const tournamentsRoute = '/api/tournament/tournaments';
+  const tournamentDetailsRoute = '/api/tournament';
+  const tournamentsRoute = '/api/tournaments';
   const inviteRotue = '/api/tournament/invite';
 
   beforeEach(async () => {
@@ -95,24 +95,22 @@ describe('Tournament Routes', () => {
     const [tournament] = await createTestTournament();
 
     let response = await request(app)
-      .post(leaveRoute)
+      .post(`${leaveRoute}/blah`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(400);
 
     response = await request(app)
-      .post(leaveRoute)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ tournamentId: tournament.id });
+      .post(`${leaveRoute}/${tournament.id}`)
+      .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(400);
 
     await userJoinTournament(user, tournament);
 
     response = await request(app)
-      .post(leaveRoute)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ tournamentId: tournament.id });
+      .post(`${leaveRoute}/${tournament.id}`)
+      .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(200);
     const updatedUser = await prismaClient.user.findFirst({
@@ -128,33 +126,30 @@ describe('Tournament Routes', () => {
     const [tournament] = await createTestTournament();
 
     let response = await request(app)
-      .post(getCodeRoute)
+      .post(`${getCodeRoute}/blah`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(400);
 
     response = await request(app)
-      .post(getCodeRoute)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ tournamentId: tournament.id });
+      .post(`${getCodeRoute}/${tournament.id}`)
+      .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(400);
 
     await userJoinTournament(user, tournament);
 
     response = await request(app)
-      .post(getCodeRoute)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ tournamentId: tournament.id });
+      .post(`${getCodeRoute}/${tournament.id}`)
+      .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toHaveProperty('data');
     expect(response.body.data).not.toBe('');
 
     response = await request(app)
-      .post(getCodeRoute)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ tournamentId: tournament.id });
+      .post(`${getCodeRoute}/${tournament.id}`)
+      .set('Authorization', `Bearer ${token}`);
 
     // Check that we are updating a code instead of adding a new one
     const codeCount = await prismaClient.inviteToken.count();
@@ -199,6 +194,10 @@ describe('Tournament Routes', () => {
     expect(response.body.data).toEqual({
       tournamentId: tournament.id,
       bracketName: bracket.bracket_name,
+      memberData: [
+        { id: sender.id, nickname: sender.nickname, score: 0 },
+        { id: user.id, nickname: user.nickname, score: 0 },
+      ],
     });
 
     expect(updatedUser.tournaments).toContainEqual({
@@ -214,37 +213,35 @@ describe('Tournament Routes', () => {
     expect(response.statusCode).toBe(400);
   });
 
-  test(membersRoute, async () => {
+  test(tournamentDetailsRoute, async () => {
     const [user, token] = await createTestUser();
-    const [tournament] = await createTestTournament();
+    const [tournament, bracket] = await createTestTournament();
 
     let response = await request(app)
-      .get(membersRoute)
+      .get(`${tournamentDetailsRoute}/sdfsdf`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(400);
 
     response = await request(app)
-      .get(membersRoute)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ tournamentId: tournament.id });
+      .get(`${tournamentDetailsRoute}/${tournament.id}`)
+      .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(400);
 
     await userJoinTournament(user, tournament);
 
     response = await request(app)
-      .get(membersRoute)
+      .get(`${tournamentDetailsRoute}/${tournament.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ tournamentId: tournament.id });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body.data).toEqual([
-      {
-        id: user.id,
-        nickname: user.nickname,
-      },
-    ]);
+    expect(response.body.data).toEqual({
+      tournamentId: tournament.id,
+      bracketName: bracket.bracket_name,
+      memberData: [{ id: user.id, nickname: user.nickname, score: 0 }],
+    });
 
     const [member1] = await createTestUser();
     const [member2] = await createTestUser();
@@ -253,25 +250,32 @@ describe('Tournament Routes', () => {
     await userJoinTournament(member2, tournament);
 
     response = await request(app)
-      .get(membersRoute)
+      .get(`${tournamentDetailsRoute}/${tournament.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ tournamentId: tournament.id });
 
     expect(response.statusCode).toBe(200);
-    expect(response.body.data).toEqual([
-      {
-        id: user.id,
-        nickname: user.nickname,
-      },
-      {
-        id: member1.id,
-        nickname: member1.nickname,
-      },
-      {
-        id: member2.id,
-        nickname: member2.nickname,
-      },
-    ]);
+    expect(response.body.data).toEqual({
+      tournamentId: tournament.id,
+      bracketName: bracket.bracket_name,
+      memberData: [
+        {
+          id: user.id,
+          nickname: user.nickname,
+          score: 0,
+        },
+        {
+          id: member1.id,
+          nickname: member1.nickname,
+          score: 0,
+        },
+        {
+          id: member2.id,
+          nickname: member2.nickname,
+          score: 0,
+        },
+      ],
+    });
   });
 
   test(tournamentsRoute, async () => {
