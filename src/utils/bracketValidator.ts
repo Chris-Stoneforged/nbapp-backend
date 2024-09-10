@@ -1,4 +1,4 @@
-import { BracketData } from '../bracketData';
+import { BracketData } from './bracketData';
 
 export default function validateBracketJson(
   bracketData: BracketData

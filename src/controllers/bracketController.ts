@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import prismaClient from '../prismaClient';
 import { BadRequestError } from '../errors/serverError';
-import { BracketData, MatchupState } from '../bracketData';
+import { BracketData, MatchupState } from '../utils/bracketData';
 import { User } from '@prisma/client';
 import validateBracketJson from '../utils/bracketValidator';
 
@@ -256,19 +256,13 @@ export async function getBracketStateForUser(
   request: Request,
   response: Response
 ) {
-  const user: User =
-    request.body.user_id === undefined
-      ? request.user
-      : await prismaClient.user.findFirst({
-          where: { id: request.body.user_id },
-        });
-
-  if (!user) {
-    throw new BadRequestError('Cannot retrieve state - Invalid user');
+  const bracketId = Number.parseInt(request.params.id);
+  if (Number.isNaN(bracketId)) {
+    throw new BadRequestError('Invalid tournament Id');
   }
 
   const bracket = await prismaClient.bracket.findFirst({
-    where: { id: request.body.bracketId },
+    where: { id: bracketId },
   });
   if (!bracket) {
     throw new BadRequestError(
@@ -277,7 +271,7 @@ export async function getBracketStateForUser(
   }
 
   const [matchupData, finalsMatchupId] = await getBracketStateResponse(
-    user,
+    request.user,
     bracket.id
   );
 
@@ -315,10 +309,12 @@ async function getBracketStateResponse(
       round: matchup.round,
       team_a: matchup.team_a ?? parentMatchups[0].predictions[0]?.winner,
       team_b: matchup.team_b ?? parentMatchups[1].predictions[0]?.winner,
-      winner: matchup.winner,
     };
     if (matchup.predictions.length > 0) {
       result.predictedWinner = matchup.predictions[0].winner;
+    }
+    if (matchup.winner !== null) {
+      result.winner = matchup.winner;
     }
 
     return result;

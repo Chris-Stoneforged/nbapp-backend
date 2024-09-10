@@ -1,5 +1,22 @@
-import { User } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
-export async function calculateUserScore(user: User): Promise<number> {
-  return 0;
+type UserWithPredictionsWithMatchups = Prisma.UserGetPayload<{
+  include: { predictions: { include: { matchup: true } } };
+}>;
+
+export function calculateUserScore(
+  user: UserWithPredictionsWithMatchups
+): number {
+  let score = 0;
+  for (const prediction of user.predictions) {
+    if (
+      prediction.matchup.winner &&
+      prediction.winner === prediction.matchup.winner
+    ) {
+      // 3 points for predicting finals match up
+      score += prediction.matchup.advances_to ? 1 : 3;
+    }
+  }
+
+  return score;
 }

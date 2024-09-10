@@ -198,7 +198,11 @@ export async function joinTournament(request: Request, response: Response) {
     include: {
       users: {
         include: {
-          predictions: true,
+          predictions: {
+            include: {
+              matchup: true,
+            },
+          },
         },
       },
       bracket: true,
@@ -292,7 +296,15 @@ export async function getTournamentDetails(
       id: tournamentId,
     },
     include: {
-      users: true,
+      users: {
+        include: {
+          predictions: {
+            include: {
+              matchup: true,
+            },
+          },
+        },
+      },
       bracket: true,
     },
   });

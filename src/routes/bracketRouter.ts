@@ -16,7 +16,7 @@ router
   .route('/bracket/prediction/make')
   .post(errorSafe(isUserAuthenticated, makePrediction));
 router
-  .route('/bracket/state')
+  .route('/bracket/state/:id')
   .get(errorSafe(isUserAuthenticated, getBracketStateForUser));
 router
   .route('/bracket/available')

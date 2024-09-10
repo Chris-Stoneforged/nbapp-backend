@@ -1,4 +1,4 @@
-import { BracketData } from '../../bracketData';
+import { BracketData } from '../../utils/bracketData';
 import validateBracketJson from '../../utils/bracketValidator';
 
 describe('Bracket Validator', () => {
