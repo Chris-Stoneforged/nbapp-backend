@@ -1,15 +1,8 @@
 name: CI
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-
+on: workflow_dispatch
 permissions:
   actions: read
   contents: read
-
 jobs:
   main:
     runs-on: ubuntu-latest
