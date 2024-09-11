@@ -10,12 +10,14 @@
   "private": true,
   "dependencies": {
     "@prisma/client": "^5.17.0",
+    "@sentry/node": "^8.30.0",
+    "@sentry/profiling-node": "^8.30.0",
     "axios": "^1.6.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "docker-compose": "^0.24.8",
     "dotenv-cli": "^7.4.2",
-    "express": "~4.18.1",
+    "express": "^4.20.0",
     "jsonwebtoken": "^9.0.2",
     "tslib": "^2.3.0"
   },

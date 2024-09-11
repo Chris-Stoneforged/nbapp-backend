@@ -314,7 +314,7 @@ export async function getTournamentDetails(
     !tournament.users.some((user) => user.id === request.user.id)
   ) {
     throw new BadRequestError(
-      `User is not in tournament with id ${request.body.tournamentId}`
+      `User is not in tournament with id ${request.params.id}`
     );
   }
 
