@@ -71,7 +71,7 @@ describe('Auth routes', () => {
     expect(response.status).toBe(401);
 
     // Create user
-    const [user] = await createTestUser('test123');
+    const [user] = await createTestUser(false, 'test123');
 
     // Wrong password
     response = await request(app)

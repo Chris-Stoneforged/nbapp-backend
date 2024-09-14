@@ -4,6 +4,7 @@ import { Bracket, Tournament, User } from '@prisma/client';
 import { createInviteToken } from '../utils/utils';
 
 export async function createTestUser(
+  isAdmin = false,
   password?: string
 ): Promise<[User, string]> {
   const seed = new Date(Date.now()).getMilliseconds().toString();
@@ -16,7 +17,7 @@ export async function createTestUser(
     data: {
       email: email,
       nickname: nickname,
-      role: 'User',
+      role: isAdmin ? 'Admin' : 'User',
       password: hashedPassword,
     },
   });
