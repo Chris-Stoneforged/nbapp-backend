@@ -4,9 +4,9 @@ import prismaClient from '../../prismaClient';
 import { createTestUser } from '../testUtils';
 
 describe('Auth routes', () => {
-  const registerRoute = '/api/register';
-  const loginRoute = '/api/login';
-  const logoutRoute = '/api/logout';
+  const registerRoute = '/api/v1/register';
+  const loginRoute = '/api/v1/login';
+  const logoutRoute = '/api/v1/logout';
 
   const validTokenRegex = new RegExp(
     '^token=([A-Za-z0-9_-]+.[A-Za-z0-9_-]+.[A-Za-z0-9_-]+);'

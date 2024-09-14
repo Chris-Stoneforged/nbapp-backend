@@ -5,7 +5,7 @@ import errorSafe from '../errors/errorHandler';
 
 const router: Router = express.Router();
 router
-  .route('/update-bracket')
+  .route('/v1/update-bracket')
   .post(errorSafe(isUserAuthenticated, isAdmin, udpateBracket));
 
 export default router;

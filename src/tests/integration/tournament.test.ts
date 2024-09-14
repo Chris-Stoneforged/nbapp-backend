@@ -10,13 +10,13 @@ import request from 'supertest';
 import prismaClient from '../../prismaClient';
 
 describe('Tournament Routes', () => {
-  const createRoute = '/api/tournament/create';
-  const leaveRoute = '/api/tournament/leave';
-  const getCodeRoute = '/api/tournament/generate-invite-code';
-  const joinRoute = '/api/tournament/join';
-  const tournamentDetailsRoute = '/api/tournament';
-  const tournamentsRoute = '/api/tournaments';
-  const inviteRotue = '/api/tournament/invite';
+  const createRoute = '/api/v1/tournament/create';
+  const leaveRoute = '/api/v1/tournament/leave';
+  const getCodeRoute = '/api/v1/tournament/generate-invite-code';
+  const joinRoute = '/api/v1/tournament/join';
+  const tournamentDetailsRoute = '/api/v1/tournament';
+  const tournamentsRoute = '/api/v1/tournaments';
+  const inviteRotue = '/api/v1/tournament/invite';
 
   beforeEach(async () => {
     await prismaClient.bracket.deleteMany();

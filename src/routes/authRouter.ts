@@ -4,8 +4,8 @@ import { isUserAuthenticated } from '../middleware/auth';
 import express, { Router } from 'express';
 
 const router: Router = express.Router();
-router.route('/register').post(errorSafe(register));
-router.route('/login').post(errorSafe(login));
-router.route('/logout').post(errorSafe(isUserAuthenticated, logout));
+router.route('/v1/register').post(errorSafe(register));
+router.route('/v1/login').post(errorSafe(login));
+router.route('/v1/logout').post(errorSafe(isUserAuthenticated, logout));
 
 export default router;

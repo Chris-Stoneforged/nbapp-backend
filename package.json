@@ -10,6 +10,7 @@
   "private": true,
   "dependencies": {
     "@prisma/client": "^5.17.0",
+    "@sentry/esbuild-plugin": "^2.22.4",
     "@sentry/node": "^8.30.0",
     "@sentry/profiling-node": "^8.30.0",
     "axios": "^1.6.0",

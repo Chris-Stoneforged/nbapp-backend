@@ -13,25 +13,25 @@ import errorSafe from '../errors/errorHandler';
 
 const router: Router = express.Router();
 router
-  .route('/tournament/create')
+  .route('/v1/tournament/create')
   .post(errorSafe(isUserAuthenticated, createTournament));
 router
-  .route('/tournament/join/:code')
+  .route('/v1/tournament/join/:code')
   .post(errorSafe(isUserAuthenticated, joinTournament));
 router
-  .route('/tournament/leave/:id')
+  .route('/v1/tournament/leave/:id')
   .post(errorSafe(isUserAuthenticated, leaveTournament));
 router
-  .route('/tournament/generate-invite-code/:id')
+  .route('/v1/tournament/generate-invite-code/:id')
   .post(errorSafe(isUserAuthenticated, getTournamentInviteCode));
 router
-  .route('/tournament/:id')
+  .route('/v1/tournament/:id')
   .get(errorSafe(isUserAuthenticated, getTournamentDetails));
 router
-  .route('/tournaments')
+  .route('/v1/tournaments')
   .get(errorSafe(isUserAuthenticated, getUsersTournaments));
 router
-  .route('/tournament/invite/:code')
+  .route('/v1/tournament/invite/:code')
   .get(errorSafe(isUserAuthenticated, getInviteCodeInfo));
 
 export default router;
