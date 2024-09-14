@@ -55,6 +55,7 @@ export default function validateBracketJson(
         return [false, 'Invalid advance_tos'];
       }
 
+      // Check that a team in the next round can't be set if the winner for current matchup hasn't
       if (nextMatchup.round > 1 && !matchUp.winner) {
         if (
           nextMatchup.team_a &&

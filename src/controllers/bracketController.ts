@@ -53,6 +53,22 @@ export async function udpateBracket(
     .json({ success: true, message: 'Successfully updated bracket data.' });
 }
 
+export async function deleteBracket(request: Request, response: Response) {
+  const bracketId = Number.parseInt(request.params.id);
+  if (Number.isNaN(bracketId)) {
+    throw new BadRequestError('Invalid bracket Id');
+  }
+
+  await prismaClient.bracket.delete({
+    where: { id: bracketId },
+  });
+
+  response.status(200).json({
+    success: true,
+    message: 'Successfully deleted bracket',
+  });
+}
+
 export async function getAvailableBrackets(
   request: Request,
   response: Response
