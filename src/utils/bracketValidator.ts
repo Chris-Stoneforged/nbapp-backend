@@ -54,6 +54,23 @@ export default function validateBracketJson(
       if (nextMatchup.round !== matchUp.round + 1) {
         return [false, 'Invalid advance_tos'];
       }
+
+      if (nextMatchup.round > 1 && !matchUp.winner) {
+        if (
+          nextMatchup.team_a &&
+          (nextMatchup.team_a === matchUp.team_a ||
+            nextMatchup.team_a === matchUp.team_b)
+        ) {
+          return [false, 'Team set, but previous round winner was not decided'];
+        }
+        if (
+          nextMatchup.team_b &&
+          (nextMatchup.team_b === matchUp.team_a ||
+            nextMatchup.team_b === matchUp.team_b)
+        ) {
+          return [false, 'Team set, but previous round winner was not decided'];
+        }
+      }
     }
 
     // Check winners are valid
