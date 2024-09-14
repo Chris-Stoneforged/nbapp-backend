@@ -14,20 +14,20 @@ export async function createTournament(request: Request, response: Response) {
     throw new BadRequestError('Cannot create tournament, invalid bracket');
   }
 
-  const existingTournament = await prismaClient.tournament.findFirst({
+  const userTournamentCount = await prismaClient.tournament.count({
     where: {
       users: {
         some: {
           id: request.user.id,
         },
       },
-      bracket_id: request.body.bracketId,
     },
   });
 
-  if (existingTournament) {
+  const maxTournaments = Number(process.env.USER_MAX_TOURNAMENTS);
+  if (userTournamentCount >= maxTournaments) {
     throw new BadRequestError(
-      'User is already in a tournament for this bracket'
+      `User cannot be in more than ${maxTournaments} tournaments`
     );
   }
 
@@ -219,6 +219,23 @@ export async function joinTournament(request: Request, response: Response) {
 
   if (tournament.users.some((user) => user.id === request.user.id)) {
     throw new BadRequestError('User is already in this team');
+  }
+
+  const userTournamentCount = await prismaClient.tournament.count({
+    where: {
+      users: {
+        some: {
+          id: request.user.id,
+        },
+      },
+    },
+  });
+
+  const maxTournaments = Number(process.env.USER_MAX_TOURNAMENTS);
+  if (userTournamentCount >= maxTournaments) {
+    throw new BadRequestError(
+      `User cannot be in more than ${maxTournaments} tournaments`
+    );
   }
 
   await prismaClient.user.update({
