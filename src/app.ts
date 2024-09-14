@@ -1,6 +1,6 @@
 import './instrument';
 import express, { Express } from 'express';
-import authRouter from './routes/authRouter';
+import authRouter from './routes/userRouter';
 import tournamentRouter from './routes/tournatmentRouter';
 import adminRouter from './routes/adminRouter';
 import bracketRouter from './routes/bracketRouter';
@@ -11,11 +11,7 @@ import * as Sentry from '@sentry/node';
 
 const app: Express = express();
 
-app.get('/debug-sentry', function mainHandler(req, res) {
-  throw new Error('My first Sentry error!');
-});
-
-app.use(rateLimiter({ hitLimit: 2, timeOutMillis: 10000 }));
+app.use(rateLimiter({ hitLimit: 20, timeOutMillis: 30000 }));
 app.use(express.json());
 
 // Routes

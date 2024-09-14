@@ -1,12 +1,18 @@
 import request from 'supertest';
 import app from '../../app';
 import prismaClient from '../../prismaClient';
-import { createTestUser } from '../testUtils';
+import {
+  createTestBracket,
+  createTestTournament,
+  createTestUser,
+  userJoinTournament,
+} from '../testUtils';
 
 describe('Auth routes', () => {
-  const registerRoute = '/api/v1/register';
-  const loginRoute = '/api/v1/login';
-  const logoutRoute = '/api/v1/logout';
+  const registerRoute = '/api/v1/user/register';
+  const loginRoute = '/api/v1/user/login';
+  const logoutRoute = '/api/v1/user/logout';
+  const tournamentsRoute = '/api/v1/user/tournaments';
 
   const validTokenRegex = new RegExp(
     '^token=([A-Za-z0-9_-]+.[A-Za-z0-9_-]+.[A-Za-z0-9_-]+);'
@@ -104,5 +110,56 @@ describe('Auth routes', () => {
     const cookie = response.headers['set-cookie'];
     expect(cookie).toHaveLength(1);
     expect(cookie[0]).toMatch(invalidTokenRegex);
+  });
+
+  test(tournamentsRoute, async () => {
+    const [user, token] = await createTestUser();
+
+    let response = await request(app)
+      .get(tournamentsRoute)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty('data');
+    expect(response.body.data).toEqual([]);
+
+    const bracket1 = await createTestBracket('test1');
+    const bracket2 = await createTestBracket('test2');
+    const [tournament1] = await createTestTournament(bracket1);
+    const [tournament2] = await createTestTournament(bracket2);
+
+    await userJoinTournament(user, tournament1);
+
+    response = await request(app)
+      .get(tournamentsRoute)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty('data');
+    expect(response.body.data).toEqual([
+      {
+        tournamentId: tournament1.id,
+        bracketName: bracket1.bracket_name,
+      },
+    ]);
+
+    await userJoinTournament(user, tournament2);
+
+    response = await request(app)
+      .get(tournamentsRoute)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty('data');
+    expect(response.body.data).toEqual([
+      {
+        tournamentId: tournament1.id,
+        bracketName: bracket1.bracket_name,
+      },
+      {
+        tournamentId: tournament2.id,
+        bracketName: bracket2.bracket_name,
+      },
+    ]);
   });
 });

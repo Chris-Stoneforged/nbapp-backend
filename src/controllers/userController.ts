@@ -83,3 +83,30 @@ export async function logout(
       message: 'Successfully logged out',
     });
 }
+
+export async function getTournaments(request: Request, response: Response) {
+  const userWithTournaments = await prismaClient.user.findFirst({
+    where: {
+      id: request.user.id,
+    },
+    include: {
+      tournaments: {
+        include: {
+          bracket: true,
+        },
+      },
+    },
+  });
+
+  const tournamentData = userWithTournaments.tournaments.map((tournament) => {
+    return {
+      tournamentId: tournament.id,
+      bracketName: tournament.bracket.bracket_name,
+    };
+  });
+
+  response.status(200).json({
+    success: true,
+    data: tournamentData,
+  });
+}

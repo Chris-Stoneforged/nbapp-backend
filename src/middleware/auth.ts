@@ -1,10 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import prismaClient from '../prismaClient';
-import ServerError, {
-  ForbiddenError,
-  UnauthorizedError,
-} from '../errors/serverError';
+import { ForbiddenError, UnauthorizedError } from '../errors/serverError';
 import { Role } from '@prisma/client';
 
 export async function isUserAuthenticated(

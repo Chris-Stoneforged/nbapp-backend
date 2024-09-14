@@ -15,7 +15,6 @@ describe('Tournament Routes', () => {
   const getCodeRoute = '/api/v1/tournament/generate-invite-code';
   const joinRoute = '/api/v1/tournament/join';
   const tournamentDetailsRoute = '/api/v1/tournament';
-  const tournamentsRoute = '/api/v1/tournaments';
   const inviteRotue = '/api/v1/tournament/invite';
 
   beforeEach(async () => {
@@ -276,57 +275,6 @@ describe('Tournament Routes', () => {
         },
       ],
     });
-  });
-
-  test(tournamentsRoute, async () => {
-    const [user, token] = await createTestUser();
-
-    let response = await request(app)
-      .get(tournamentsRoute)
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toHaveProperty('data');
-    expect(response.body.data).toEqual([]);
-
-    const bracket1 = await createTestBracket('test1');
-    const bracket2 = await createTestBracket('test2');
-    const [tournament1] = await createTestTournament(bracket1);
-    const [tournament2] = await createTestTournament(bracket2);
-
-    await userJoinTournament(user, tournament1);
-
-    response = await request(app)
-      .get(tournamentsRoute)
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toHaveProperty('data');
-    expect(response.body.data).toEqual([
-      {
-        tournamentId: tournament1.id,
-        bracketName: bracket1.bracket_name,
-      },
-    ]);
-
-    await userJoinTournament(user, tournament2);
-
-    response = await request(app)
-      .get(tournamentsRoute)
-      .set('Authorization', `Bearer ${token}`);
-
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toHaveProperty('data');
-    expect(response.body.data).toEqual([
-      {
-        tournamentId: tournament1.id,
-        bracketName: bracket1.bracket_name,
-      },
-      {
-        tournamentId: tournament2.id,
-        bracketName: bracket2.bracket_name,
-      },
-    ]);
   });
 
   test(inviteRotue, async () => {

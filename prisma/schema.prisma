@@ -35,6 +35,7 @@ model Tournament {
   bracket         Bracket       @relation(fields: [bracket_id], references: [id], onDelete: Cascade)
   users           User[]
   invite_tokens   InviteToken[]
+  predictions     Prediction[]
 }
 
 model InviteToken {
@@ -72,7 +73,9 @@ model Prediction {
   user_id         Int
   user            User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   matchup_id      Int           
-  bracket_id      Int           @default(1)
+  tournament_id   Int
+  tournament      Tournament    @relation(fields: [tournament_id], references: [id])
+  bracket_id      Int           
   matchup         Matchup       @relation(fields: [matchup_id, bracket_id], references: [id, bracket_id])
   winner          String
 }
