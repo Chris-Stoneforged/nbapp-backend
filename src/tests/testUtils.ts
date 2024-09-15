@@ -1,7 +1,12 @@
 import prismaClient from '../prismaClient';
 import { encryptPassword, getJwtTokenForUser } from '../utils/authUtils';
-import { Bracket, Tournament, User } from '@prisma/client';
+import { Bracket, Prisma, Tournament, User } from '@prisma/client';
 import { createInviteToken } from '../utils/utils';
+
+import { exec } from 'child_process';
+import * as util from 'util';
+
+const execPromisify = util.promisify(exec);
 
 export async function createTestUser(
   isAdmin = false,
@@ -94,4 +99,10 @@ export async function getTestInviteCode(
   });
 
   return code;
+}
+
+export async function resetDatabase() {
+  await execPromisify(
+    'dotenv -e .env.test -- npx prisma migrate reset --force --skip-seed'
+  );
 }

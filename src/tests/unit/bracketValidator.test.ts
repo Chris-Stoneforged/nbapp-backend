@@ -533,7 +533,6 @@ describe('Bracket Validator', () => {
           team_a: 'Lakers',
           team_b: 'Suns',
           advances_to: 5,
-          winner: 'Lakers',
         },
         {
           id: 2,

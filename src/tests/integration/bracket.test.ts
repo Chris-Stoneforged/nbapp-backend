@@ -1,12 +1,16 @@
 import request from 'supertest';
 import app from '../../app';
 import prismaClient from '../../prismaClient';
-import { createTestBracket, createTestUser } from '../testUtils';
+import { createTestBracket, createTestUser, resetDatabase } from '../testUtils';
 
 describe('Bracket routes', () => {
-  const setBracketRoute = '/api/v1/bracket/set';
+  const setBracketRoute = '/api/admin/v1/bracket/set';
   const deleteBracketRoute = '/api/admin/v1/bracket';
   const bracketsRoute = '/api/v1/brackets';
+
+  beforeEach(async () => {
+    await resetDatabase();
+  });
 
   test(setBracketRoute, async () => {
     const [, token] = await createTestUser(true);
@@ -21,53 +25,56 @@ describe('Bracket routes', () => {
       .post(setBracketRoute)
       .set('Authorization', `Bearer ${token}`)
       .send({
-        bracketName: 'test',
-        matchups: [
-          {
-            id: 1,
-            round: 1,
-            team_a: 'Lakers',
-            team_b: 'Suns',
-            advances_to: 5,
-          },
-          {
-            id: 2,
-            round: 1,
-            team_a: 'Mavericks',
-            team_b: 'Timberwolves',
-            advances_to: 5,
-          },
-          {
-            id: 3,
-            round: 1,
-            team_a: 'Pelicans',
-            team_b: 'Kings',
-            advances_to: 6,
-          },
-          {
-            id: 4,
-            round: 1,
-            team_a: 'Nuggets',
-            team_b: 'Thunder',
-            advances_to: 6,
-          },
-          {
-            id: 5,
-            round: 2,
-            advances_to: 7,
-          },
-          {
-            id: 6,
-            round: 2,
-            advances_to: 7,
-          },
-          {
-            id: 7,
-            round: 3,
-          },
-        ],
+        bracketJson: {
+          bracketName: 'test',
+          matchups: [
+            {
+              id: 1,
+              round: 1,
+              team_a: 'Lakers',
+              team_b: 'Suns',
+              advances_to: 5,
+            },
+            {
+              id: 2,
+              round: 1,
+              team_a: 'Mavericks',
+              team_b: 'Timberwolves',
+              advances_to: 5,
+            },
+            {
+              id: 3,
+              round: 1,
+              team_a: 'Pelicans',
+              team_b: 'Kings',
+              advances_to: 6,
+            },
+            {
+              id: 4,
+              round: 1,
+              team_a: 'Nuggets',
+              team_b: 'Thunder',
+              advances_to: 6,
+            },
+            {
+              id: 5,
+              round: 2,
+              advances_to: 7,
+            },
+            {
+              id: 6,
+              round: 2,
+              advances_to: 7,
+            },
+            {
+              id: 7,
+              round: 3,
+            },
+          ],
+        },
       });
 
+    console.log(response.body.message);
     expect(response.statusCode).toBe(200);
     let bracketCount = await prismaClient.bracket.count();
     let matchup1 = await prismaClient.matchup.findFirst({
@@ -78,59 +85,61 @@ describe('Bracket routes', () => {
     expect(bracketCount).toBe(1);
     expect(matchup1.team_a).toBe('Lakers');
     expect(matchup1.team_b).toBe('Suns');
-    expect(matchup1.winner).toBeUndefined();
+    expect(matchup1.winner).toBeNull();
 
     response = await request(app)
       .post(setBracketRoute)
       .set('Authorization', `Bearer ${token}`)
       .send({
-        bracketName: 'test',
-        matchups: [
-          {
-            id: 1,
-            round: 1,
-            team_a: 'Lakers',
-            team_b: 'Suns',
-            advances_to: 5,
-            winner: 'Lakers',
-          },
-          {
-            id: 2,
-            round: 1,
-            team_a: 'Mavericks',
-            team_b: 'Timberwolves',
-            advances_to: 5,
-          },
-          {
-            id: 3,
-            round: 1,
-            team_a: 'Pelicans',
-            team_b: 'Kings',
-            advances_to: 6,
-          },
-          {
-            id: 4,
-            round: 1,
-            team_a: 'Nuggets',
-            team_b: 'Thunder',
-            advances_to: 6,
-          },
-          {
-            id: 5,
-            round: 2,
-            team_a: 'Lakers',
-            advances_to: 7,
-          },
-          {
-            id: 6,
-            round: 2,
-            advances_to: 7,
-          },
-          {
-            id: 7,
-            round: 3,
-          },
-        ],
+        bracketJson: {
+          bracketName: 'test',
+          matchups: [
+            {
+              id: 1,
+              round: 1,
+              team_a: 'Lakers',
+              team_b: 'Suns',
+              advances_to: 5,
+              winner: 'Lakers',
+            },
+            {
+              id: 2,
+              round: 1,
+              team_a: 'Mavericks',
+              team_b: 'Timberwolves',
+              advances_to: 5,
+            },
+            {
+              id: 3,
+              round: 1,
+              team_a: 'Pelicans',
+              team_b: 'Kings',
+              advances_to: 6,
+            },
+            {
+              id: 4,
+              round: 1,
+              team_a: 'Nuggets',
+              team_b: 'Thunder',
+              advances_to: 6,
+            },
+            {
+              id: 5,
+              round: 2,
+              team_a: 'Lakers',
+              advances_to: 7,
+            },
+            {
+              id: 6,
+              round: 2,
+              advances_to: 7,
+            },
+            {
+              id: 7,
+              round: 3,
+            },
+          ],
+        },
       });
 
     expect(response.statusCode).toBe(200);
@@ -150,14 +159,14 @@ describe('Bracket routes', () => {
     const [, token] = await createTestUser(true);
 
     let response = await request(app)
-      .post(`${deleteBracketRoute}/1`)
+      .delete(`${deleteBracketRoute}/1`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(400);
     const bracket = await createTestBracket('test');
 
     response = await request(app)
-      .post(`${deleteBracketRoute}/${bracket.id}`)
+      .delete(`${deleteBracketRoute}/${bracket.id}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(200);
@@ -165,7 +174,7 @@ describe('Bracket routes', () => {
     expect(bracketCount).toBe(0);
 
     response = await request(app)
-      .post(`${deleteBracketRoute}/${bracket.id}`)
+      .delete(`${deleteBracketRoute}/${bracket.id}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(400);
@@ -175,7 +184,7 @@ describe('Bracket routes', () => {
     const [, token] = await createTestUser();
 
     let response = await request(app)
-      .post(bracketsRoute)
+      .get(bracketsRoute)
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(200);
@@ -186,7 +195,7 @@ describe('Bracket routes', () => {
     const bracket2 = await createTestBracket('test2');
 
     response = await request(app)
-      .post(bracketsRoute)
+      .get(bracketsRoute)
       .set('Authorization', `Bearer ${token}`);
 
     expect(response.statusCode).toBe(200);

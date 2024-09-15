@@ -59,9 +59,15 @@ export async function deleteBracket(request: Request, response: Response) {
     throw new BadRequestError('Invalid bracket Id');
   }
 
-  await prismaClient.bracket.delete({
-    where: { id: bracketId },
-  });
+  try {
+    await prismaClient.bracket.delete({
+      where: { id: bracketId },
+    });
+  } catch (e) {
+    throw new BadRequestError(
+      "Could not delete bracket. Likely bracket doesn't exist"
+    );
+  }
 
   response.status(200).json({
     success: true,
