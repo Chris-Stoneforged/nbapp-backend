@@ -9,14 +9,11 @@ import * as util from 'util';
 const execPromisify = util.promisify(exec);
 
 export async function createTestUser(
-  isAdmin = false,
-  password?: string
+  email = 'test@gmail.com',
+  nickname = 'test',
+  password = 'password',
+  isAdmin = false
 ): Promise<[User, string]> {
-  const seed = new Date(Date.now()).getMilliseconds().toString();
-  const email = `${seed}@gmail.com`;
-  password = password || seed;
-  const nickname = seed;
-
   const hashedPassword = await encryptPassword(password);
   const user: User = await prismaClient.user.create({
     data: {
@@ -103,6 +100,6 @@ export async function getTestInviteCode(
 
 export async function resetDatabase() {
   await execPromisify(
-    'dotenv -e .env.test -- npx prisma migrate reset --force --skip-seed'
+    'sleep 1 && dotenv -e .env.test -- npx prisma migrate reset --force --skip-seed && sleep 1'
   );
 }

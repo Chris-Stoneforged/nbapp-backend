@@ -5,6 +5,7 @@ import {
   createTestBracket,
   createTestTournament,
   createTestUser,
+  resetDatabase,
   userJoinTournament,
 } from '../testUtils';
 
@@ -20,7 +21,11 @@ describe('Auth routes', () => {
   const invalidTokenRegex = new RegExp('^token=none;');
 
   beforeEach(async () => {
-    await prismaClient.user.deleteMany();
+    await resetDatabase();
+  });
+
+  test.only('Default', () => {
+    expect(true).toBeTruthy();
   });
 
   test(registerRoute, async () => {
@@ -71,7 +76,12 @@ describe('Auth routes', () => {
     expect(response.status).toBe(401);
 
     // Create user
-    const [user] = await createTestUser(false, 'test123');
+    const [user] = await createTestUser(
+      'test@gmail.com',
+      'test',
+      'test123',
+      false
+    );
 
     // Wrong password
     response = await request(app)

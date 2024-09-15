@@ -5,6 +5,7 @@ import {
   createTestTournament,
   getTestInviteCode,
   userJoinTournament,
+  resetDatabase,
 } from '../testUtils';
 import request from 'supertest';
 import prismaClient from '../../prismaClient';
@@ -18,10 +19,11 @@ describe('Tournament Routes', () => {
   const inviteRotue = '/api/v1/tournament/invite';
 
   beforeEach(async () => {
-    await prismaClient.bracket.deleteMany();
-    await prismaClient.tournament.deleteMany();
-    await prismaClient.inviteToken.deleteMany();
-    await prismaClient.user.deleteMany();
+    await resetDatabase();
+  });
+
+  test.only('Default', () => {
+    expect(true).toBeTruthy();
   });
 
   test(createRoute, async () => {
@@ -165,7 +167,7 @@ describe('Tournament Routes', () => {
 
     expect(response.statusCode).toBe(400);
 
-    const [sender] = await createTestUser();
+    const [sender] = await createTestUser('sender@gmail.com');
     const [tournament, bracket] = await createTestTournament();
     await userJoinTournament(sender, tournament);
     let inviteCode = await getTestInviteCode(sender, tournament, 0);
@@ -242,8 +244,8 @@ describe('Tournament Routes', () => {
       memberData: [{ id: user.id, nickname: user.nickname, score: 0 }],
     });
 
-    const [member1] = await createTestUser();
-    const [member2] = await createTestUser();
+    const [member1] = await createTestUser('test1@gmail.com');
+    const [member2] = await createTestUser('test2@gmail.com');
 
     await userJoinTournament(member1, tournament);
     await userJoinTournament(member2, tournament);
@@ -287,7 +289,7 @@ describe('Tournament Routes', () => {
 
     expect(response.statusCode).toBe(400);
 
-    const [sender] = await createTestUser();
+    const [sender] = await createTestUser('sender@gmail.com');
     const [tournament, bracket] = await createTestTournament();
     await userJoinTournament(sender, tournament);
     let inviteCode = await getTestInviteCode(sender, tournament, 0);

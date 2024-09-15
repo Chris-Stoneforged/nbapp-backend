@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import prismaClient from '../prismaClient';
 import { BadRequestError } from '../errors/serverError';
-import { BracketData, MatchupState } from '../utils/bracketData';
+import { BracketData } from '../utils/bracketData';
 import validateBracketJson from '../utils/bracketValidator';
 
 // Admin route

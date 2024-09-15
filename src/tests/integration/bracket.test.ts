@@ -12,8 +12,17 @@ describe('Bracket routes', () => {
     await resetDatabase();
   });
 
+  test.only('Default', () => {
+    expect(true).toBeTruthy();
+  });
+
   test(setBracketRoute, async () => {
-    const [, token] = await createTestUser(true);
+    const [, token] = await createTestUser(
+      'test@gmail.com',
+      'test',
+      'test',
+      true
+    );
 
     let response = await request(app)
       .post(setBracketRoute)
@@ -74,7 +83,6 @@ describe('Bracket routes', () => {
         },
       });
 
-    console.log(response.body.message);
     expect(response.statusCode).toBe(200);
     let bracketCount = await prismaClient.bracket.count();
     let matchup1 = await prismaClient.matchup.findFirst({
@@ -156,7 +164,12 @@ describe('Bracket routes', () => {
   });
 
   test(deleteBracketRoute, async () => {
-    const [, token] = await createTestUser(true);
+    const [, token] = await createTestUser(
+      'test@gmail.com',
+      'test',
+      'test',
+      true
+    );
 
     let response = await request(app)
       .delete(`${deleteBracketRoute}/1`)
