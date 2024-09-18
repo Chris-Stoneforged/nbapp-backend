@@ -12,8 +12,13 @@ export default async function errorHandler(
     statusCode = error.statusCode;
   }
 
+  let message = error.message;
+  if (statusCode === 500 && process.env.ENV == 'PRODUCTION') {
+    message = 'Something went wrong';
+  }
+
   response.status(statusCode).json({
     success: false,
-    message: error.message,
+    message: message,
   });
 }

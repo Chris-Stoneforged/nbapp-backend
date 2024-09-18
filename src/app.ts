@@ -23,7 +23,9 @@ app.use('/api', bracketRouter);
 app.use('/api/admin', adminRouter);
 
 // Sentry
-Sentry.setupExpressErrorHandler(app);
+if (process.env.ENV == 'PRODUCTION') {
+  Sentry.setupExpressErrorHandler(app);
+}
 
 // Middleware
 app.use(cookieParser());

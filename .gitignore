@@ -42,3 +42,7 @@ Thumbs.db
 .nx/workspace-data
 
 .env.*
+.env*
+.flaskenv*
+!.env.project
+!.env.vault
