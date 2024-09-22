@@ -5,7 +5,8 @@
   "scripts": {
     "start": "dotenv -e .env.development -- nx serve",
     "build": "nx build",
-    "test": "docker compose up -d && sleep 1 && dotenv -e .env.ci -- npx prisma migrate deploy && nx test; docker compose down"
+    "test": "docker compose up -d && sleep 1 && dotenv -e .env.ci -- npx prisma migrate deploy && nx test; docker compose down",
+    "run": "dotenv -e .env.production -- nx serve"
   },
   "private": true,
   "dependencies": {
